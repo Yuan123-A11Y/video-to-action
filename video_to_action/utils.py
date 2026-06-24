@@ -29,7 +29,9 @@ def sanitize_filename(name: str) -> str:
     return cleaned
 
 
-def is_dangerous_command(command: str, forbidden_keywords: list[str] | None = None) -> bool:
+def is_dangerous_command(
+    command: str, forbidden_keywords: list[str] | None = None
+) -> bool:
     """检查命令是否包含危险操作。"""
     if forbidden_keywords is None:
         forbidden_keywords = ["rm -rf /", "format", "del /f /s /q"]

@@ -44,8 +44,6 @@ class Analyzer:
 
     def analyze(self, text: str, platform: str) -> dict:
         """分析视频内容并返回结构化计划。"""
-        prompt = self._create_prompt(text, platform)
-
         # 在实际实现中，这里调用 LLM API
         # 当前版本先返回一个模拟结果，供后续替换为真实 LLM 调用
         # TODO: 替换为真实 LLM 调用

@@ -1,6 +1,5 @@
 """错误诊断与自动修复模块。"""
 
-import re
 from pathlib import Path
 
 
@@ -30,13 +29,22 @@ class Resolver:
         error_lower = error_output.lower()
 
         # pip 命令未找到
-        if "command not found: pip" in error_lower or "pip 不是内部或外部命令" in error_lower:
+        if (
+            "command not found: pip" in error_lower
+            or "pip 不是内部或外部命令" in error_lower
+        ):
             return "请确保 Python 和 pip 已安装，并将 Python Scripts 目录添加到 PATH"
 
         # 网络超时，切换到华为云镜像
-        if any(keyword in error_lower for keyword in ["timed out", "timeout", "connection", "connect timeout"]):
+        if any(
+            keyword in error_lower
+            for keyword in ["timed out", "timeout", "connection", "connect timeout"]
+        ):
             if command.startswith("pip"):
-                return command + " -i https://mirrors.huaweicloud.com/repository/pypi/simple/"
+                return (
+                    command
+                    + " -i https://mirrors.huaweicloud.com/repository/pypi/simple/"
+                )
 
         # 权限不足（Linux/macOS）
         if "permission denied" in error_lower:
@@ -51,11 +59,15 @@ class Resolver:
             return "请安装 Git"
 
         # ffmpeg 未找到
-        if "ffmpeg" in error_lower and ("not found" in error_lower or "不是内部或外部命令" in error_lower):
+        if "ffmpeg" in error_lower and (
+            "not found" in error_lower or "不是内部或外部命令" in error_lower
+        ):
             return "请安装 ffmpeg 并添加到 PATH"
 
         # yt-dlp 未找到
-        if "yt-dlp" in error_lower and ("not found" in error_lower or "不是内部或外部命令" in error_lower):
+        if "yt-dlp" in error_lower and (
+            "not found" in error_lower or "不是内部或外部命令" in error_lower
+        ):
             return "请安装 yt-dlp：pip install yt-dlp -i https://mirrors.huaweicloud.com/repository/pypi/simple/"
 
         return None

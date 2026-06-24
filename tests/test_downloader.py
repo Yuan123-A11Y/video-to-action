@@ -2,9 +2,9 @@
 """视频下载器模块的单元测试。"""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from video_to_action.downloader import YtDlpDownloader
+from video_to_action.downloader import GreenVideoDownloader, YtDlpDownloader
 
 
 def test_yt_dlp_downloader_builds_command():
@@ -12,7 +12,9 @@ def test_yt_dlp_downloader_builds_command():
     config = {"download": {"primary": "yt-dlp", "format": "mp4", "quality": "best"}}
     with patch.object(YtDlpDownloader, "_check_dependency"):
         downloader = YtDlpDownloader(config, output_dir=Path("outputs"))
-    cmd = downloader._build_command("https://www.bilibili.com/video/BV1xx411c7mD", Path("outputs/test.mp4"))
+    cmd = downloader._build_command(
+        "https://www.bilibili.com/video/BV1xx411c7mD", Path("outputs/test.mp4")
+    )
     assert "yt-dlp" in cmd
     assert "https://www.bilibili.com/video/BV1xx411c7mD" in cmd
     assert str(Path("outputs/test.mp4")) in cmd
@@ -24,9 +26,6 @@ def test_detect_platform_delegates_to_utils():
 
     assert detect_video_platform("https://v.douyin.com/abc") == "douyin"
     assert detect_video_platform("https://www.youtube.com/watch?v=abc") == "youtube"
-
-
-from video_to_action.downloader import GreenVideoDownloader
 
 
 def test_greenvideo_url_for_platform():

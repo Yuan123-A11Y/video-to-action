@@ -36,7 +36,9 @@ class Executor:
 
         if "install_system_software" in require_confirm:
             # 匹配 Linux/macOS/Windows 下的系统软件安装命令
-            if re.search(r"^(sudo\s+)?(apt|yum|dnf|brew|choco|winget)\s+install", command_lower):
+            if re.search(
+                r"^(sudo\s+)?(apt|yum|dnf|brew|choco|winget)\s+install", command_lower
+            ):
                 return True, "安装系统级软件"
 
         if "modify_system_env" in require_confirm:

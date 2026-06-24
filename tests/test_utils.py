@@ -1,5 +1,9 @@
 # g:\trae\video-to-action\tests\test_utils.py
-from video_to_action.utils import detect_platform, sanitize_filename, is_dangerous_command
+from video_to_action.utils import (
+    detect_platform,
+    sanitize_filename,
+    is_dangerous_command,
+)
 
 
 def test_detect_platform_douyin():

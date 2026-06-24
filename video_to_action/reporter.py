@@ -85,21 +85,23 @@ class Reporter:
             if tool.get("warnings"):
                 lines.append(f"- 注意：{'；'.join(tool['warnings'])}")
 
-        lines.extend([
-            "",
-            "## 执行过程",
-            self._format_execution_results(results),
-            "",
-            "## 执行结果",
-            f"- 总步骤数：{len(results)}",
-            f"- 成功：{successful}",
-            f"- 失败：{failed}",
-            f"- 最终状态：**{final_status}**",
-            "",
-            "## 后续建议",
-            "- 请检查上述输出，确认工具已按预期安装",
-            "- 如果某步骤失败，可根据错误信息手动修复或重新运行",
-        ])
+        lines.extend(
+            [
+                "",
+                "## 执行过程",
+                self._format_execution_results(results),
+                "",
+                "## 执行结果",
+                f"- 总步骤数：{len(results)}",
+                f"- 成功：{successful}",
+                f"- 失败：{failed}",
+                f"- 最终状态：**{final_status}**",
+                "",
+                "## 后续建议",
+                "- 请检查上述输出，确认工具已按预期安装",
+                "- 如果某步骤失败，可根据错误信息手动修复或重新运行",
+            ]
+        )
 
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         report_path = self.reports_dir / f"report_{timestamp}.md"

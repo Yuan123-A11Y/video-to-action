@@ -3,7 +3,6 @@
 import shutil
 import subprocess
 import time
-import urllib.parse
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -55,14 +54,15 @@ class YtDlpDownloader:
         Returns:
             可直接传给 subprocess.run 的命令参数列表。
         """
-        quality = self.config.get("download", {}).get("quality", "best")
         return [
             "yt-dlp",
             "--no-warnings",
             "--no-check-certificates",
-            "-f", f"best[ext=mp4]/best",
+            "-f",
+            "best[ext=mp4]/best",
             "--newline",
-            "-o", str(output_path),
+            "-o",
+            str(output_path),
             url,
         ]
 
@@ -82,7 +82,9 @@ class YtDlpDownloader:
         output_path = self.output_dir / filename
 
         command = self._build_command(url, output_path)
-        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
+        result = subprocess.run(
+            command, capture_output=True, text=True, encoding="utf-8"
+        )
 
         return {
             "success": result.returncode == 0,
@@ -128,7 +130,9 @@ class GreenVideoDownloader:
                 if element.count() > 0:
                     if selector == "video source":
                         return element.get_attribute("src")
-                    return element.get_attribute("href") or element.get_attribute("data-url")
+                    return element.get_attribute("href") or element.get_attribute(
+                        "data-url"
+                    )
             except Exception:
                 continue
         return None
@@ -155,7 +159,12 @@ class GreenVideoDownloader:
                 page.goto(platform_url, wait_until="domcontentloaded", timeout=30000)
 
                 # 找到输入框并填入链接
-                input_selectors = ["input[type='text']", "input[placeholder*='链接']", "input[placeholder*='URL']", "textarea"]
+                input_selectors = [
+                    "input[type='text']",
+                    "input[placeholder*='链接']",
+                    "input[placeholder*='URL']",
+                    "textarea",
+                ]
                 filled = False
                 for selector in input_selectors:
                     try:
@@ -167,10 +176,22 @@ class GreenVideoDownloader:
 
                 if not filled:
                     browser.close()
-                    return {"success": False, "platform": platform, "method": "greenvideo", "output_path": "", "stdout": "", "stderr": "未找到输入框"}
+                    return {
+                        "success": False,
+                        "platform": platform,
+                        "method": "greenvideo",
+                        "output_path": "",
+                        "stdout": "",
+                        "stderr": "未找到输入框",
+                    }
 
                 # 找到并点击解析按钮
-                button_selectors = ["button:has-text('解析')", "button:has-text('下载')", "button[type='submit']", "a:has-text('解析')"]
+                button_selectors = [
+                    "button:has-text('解析')",
+                    "button:has-text('下载')",
+                    "button[type='submit']",
+                    "a:has-text('解析')",
+                ]
                 clicked = False
                 for selector in button_selectors:
                     try:
@@ -182,7 +203,14 @@ class GreenVideoDownloader:
 
                 if not clicked:
                     browser.close()
-                    return {"success": False, "platform": platform, "method": "greenvideo", "output_path": "", "stdout": "", "stderr": "未找到解析按钮"}
+                    return {
+                        "success": False,
+                        "platform": platform,
+                        "method": "greenvideo",
+                        "output_path": "",
+                        "stdout": "",
+                        "stderr": "未找到解析按钮",
+                    }
 
                 # 等待解析结果
                 time.sleep(8)
@@ -191,10 +219,18 @@ class GreenVideoDownloader:
                 browser.close()
 
                 if not download_url:
-                    return {"success": False, "platform": platform, "method": "greenvideo", "output_path": "", "stdout": "", "stderr": "未提取到下载链接"}
+                    return {
+                        "success": False,
+                        "platform": platform,
+                        "method": "greenvideo",
+                        "output_path": "",
+                        "stdout": "",
+                        "stderr": "未提取到下载链接",
+                    }
 
                 # 下载视频
                 import requests
+
                 response = requests.get(download_url, timeout=60)
                 response.raise_for_status()
 

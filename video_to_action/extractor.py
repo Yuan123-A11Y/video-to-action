@@ -23,11 +23,15 @@ class Extractor:
         return [
             "ffmpeg",
             "-y",
-            "-i", str(video_path),
+            "-i",
+            str(video_path),
             "-vn",
-            "-acodec", "pcm_s16le",
-            "-ar", "16000",
-            "-ac", "1",
+            "-acodec",
+            "pcm_s16le",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
             str(audio_path),
         ]
 
@@ -72,9 +76,12 @@ class Extractor:
             command = [
                 "ffmpeg",
                 "-y",
-                "-i", str(video_path),
-                "-vf", f"select='eq(n\\,{i}*N/{count + 1})'",
-                "-vframes", "1",
+                "-i",
+                str(video_path),
+                "-vf",
+                f"select='eq(n\\,{i}*N/{count + 1})'",
+                "-vframes",
+                "1",
                 str(frame_path),
             ]
             result = subprocess.run(command, capture_output=True, text=True)

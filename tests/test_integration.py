@@ -1,7 +1,6 @@
 # g:\trae\video-to-action\tests\test_integration.py
 """流水线集成测试。"""
 
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from video_to_action.cli import main
@@ -9,10 +8,11 @@ from video_to_action.cli import main
 
 def test_cli_observe_mode_short_circuits_execution():
     """观察模式应在分析后结束，不执行命令。"""
-    with patch("video_to_action.cli.download_video") as mock_download, \
-         patch("video_to_action.cli.Extractor") as MockExtractor, \
-         patch("video_to_action.cli.Analyzer") as MockAnalyzer:
-
+    with (
+        patch("video_to_action.cli.download_video") as mock_download,
+        patch("video_to_action.cli.Extractor") as MockExtractor,
+        patch("video_to_action.cli.Analyzer") as MockAnalyzer,
+    ):
         mock_download.return_value = {
             "success": True,
             "platform": "douyin",

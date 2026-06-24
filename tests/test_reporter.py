@@ -18,7 +18,9 @@ def test_reporter_generates_markdown():
             "summary": "这是一个测试摘要",
             "tools": [{"name": "test-tool", "purpose": "测试工具"}],
         },
-        "execution_results": [{"success": True, "command": "echo hello", "stdout": "hello", "stderr": ""}],
+        "execution_results": [
+            {"success": True, "command": "echo hello", "stdout": "hello", "stderr": ""}
+        ],
     }
     report_path = reporter.generate(context)
     assert report_path.exists()

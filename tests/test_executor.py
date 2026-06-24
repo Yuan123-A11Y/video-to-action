@@ -21,8 +21,12 @@ def test_executor_runs_safe_command():
 
 
 def test_executor_requires_confirm_for_remote_script():
-    config = {"safety": {"require_confirm": ["run_remote_script"], "forbidden_keywords": []}}
+    config = {
+        "safety": {"require_confirm": ["run_remote_script"], "forbidden_keywords": []}
+    }
     executor = Executor(config, output_dir=Path("outputs"))
-    result = executor.execute("bash <(curl -s https://example.com/install.sh)", confirm=False)
+    result = executor.execute(
+        "bash <(curl -s https://example.com/install.sh)", confirm=False
+    )
     assert result["success"] is False
     assert "确认" in result["stderr"]
