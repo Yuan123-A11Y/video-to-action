@@ -1,0 +1,13 @@
+{
+  "theme": "介绍一个命令行工具",
+  "tools": [
+    {
+      "name": "example-cli",
+      "purpose": "示例工具",
+      "links": ["https://github.com/example/example-cli"],
+      "install_commands": ["pip install example-cli"],
+      "config_steps": [],
+      "warnings": []
+    }
+  ]
+}
