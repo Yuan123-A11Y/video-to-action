@@ -13,6 +13,47 @@ build/
 .ruff_cache/
 outputs/*
 !outputs/.gitkeep
-.env
-*.log
+
+# 依赖
+node_modules/
+venv/
+env/
 .venv/
+target/
+
+# 环境密钥 / 敏感文件
+.env
+.cookies.json
+*.pem
+secret.json
+config/douyin_cookies.txt
+config/settings.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log
+
+# 工具 / 第三方源码（douyin-downloader 作为子模块或外部工具，不提交二进制/缓存）
+tools/douyin-downloader/__pycache__/
+tools/douyin-downloader/.pytest_cache/
+tools/douyin-downloader/config.yml
+tools/douyin-downloader/config.yaml
+tools/ffmpeg.zip
+
+# 临时 / 调试脚本
+debug_*.py
+test_download.py
+test_integration.py
+
+# WorkBuddy 本地状态
+.workbuddy/

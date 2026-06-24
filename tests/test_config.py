@@ -10,5 +10,7 @@ def test_load_config_default(tmp_path):
     config = load_config(config_path)
     assert config["automation_level"] == "auto"
     assert config["max_retries"] == 3
-    assert config["download"]["primary"] == "yt-dlp"
-    assert config["download"]["fallback"] == "greenvideo"
+    assert config["download"]["primary"] == "douyin-downloader"
+    assert config["download"]["fallback"] == "yt-dlp"
+    assert "douyin_downloader" in config
+    assert "platforms" in config

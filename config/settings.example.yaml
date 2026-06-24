@@ -1,24 +1,31 @@
-# 视频到行动助手配置文件
+# 视频到行动助手配置文件（示例 / 模板）
+# 复制本文件为 settings.yaml 并填写真实值
 
 # 自动化级别: observe(仅分析), confirm(每步确认), auto(自动执行)
-automation_level: auto
+automation_level: confirm
 
-# 输出目录
 output_dir: outputs
-
-# 最大自动重试次数
 max_retries: 3
 
 # 下载配置
 download:
-  # 主下载方案: yt-dlp
-  primary: yt-dlp
-  # 备选下载方案: greenvideo
-  fallback: greenvideo
-  # 视频保存格式
+  primary: douyin-downloader
+  fallback: yt-dlp
   format: mp4
-  # 默认视频质量
   quality: best
+
+# 抖音下载器配置
+douyin_downloader:
+  project_path: ""
+  thread: 3
+  retry_times: 3
+  proxy: ""
+  cookies:
+    msToken: ""
+    ttwid: ""
+    odin_tt: ""
+    passport_csrf_token: ""
+    sid_guard: ""
 
 # 平台配置
 platforms:
@@ -37,14 +44,22 @@ transcription:
   model: base
   language: zh
 
+# LLM 配置（从环境变量读取 API Key）
+llm:
+  provider: openai
+  api_key: ${AGNES_API_KEY}
+  base_url: https://apihub.agnes-ai.com/v1
+  model: agnes-2.0-flash
+  max_tokens: 2048
+  temperature: 0.3
+  timeout: 120
+
 # 安全边界
 safety:
-  # 禁止执行包含这些关键词的命令
   forbidden_keywords:
     - rm -rf /
     - format
     - del /f /s /q
-  # 需要确认的操作
   require_confirm:
     - run_remote_script
     - install_system_software

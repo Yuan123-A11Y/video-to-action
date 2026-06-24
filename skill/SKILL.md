@@ -1,6 +1,6 @@
 ---
 name: video-to-action
-description: 接收抖音/B站/YouTube视频链接，自动下载、理解内容、执行安装配置并生成中文操作笔记
+description: 接收抖音/B站/YouTube视频链接，自动下载、提取内容，由 Trae 自身模型分析并生成操作方案
 ---
 
 # 视频到行动助手
@@ -20,17 +20,46 @@ description: 接收抖音/B站/YouTube视频链接，自动下载、理解内容
 1. 识别视频平台（抖音/B站/YouTube）
 2. 下载视频（yt-dlp 主方案，GreenVideo 备选）
 3. 提取音频并转写文字
-4. 使用 LLM 分析内容，生成安装/配置计划
-5. 自动执行计划（危险操作会请求确认）
+4. **由 Trae 自身大模型分析转录文本**，生成安装/配置计划
+5. 根据分析结果，在对话中指导或自动执行安装/配置
 6. 生成中文操作笔记
+
+## 标准操作步骤
+
+当用户发送视频链接时，请按以下步骤执行：
+
+1. 运行提取命令，获取视频转录文本和 Trae 分析 Prompt：
+
+   ```bash
+   python -m video_to_action.cli "<视频链接>" --level extract
+   ```
+
+2. 读取命令输出的【视频转录文本】和【供 Trae 分析的 Prompt】。
+3. 使用你的大模型能力分析转录文本，识别视频中介绍的工具、安装命令和配置步骤。
+4. 将分析结果以结构化 JSON 形式输出，包含：
+   - theme: 视频主题
+   - summary: 摘要
+   - tools: 工具列表（含 install_commands、config_steps、warnings）
+   - needs_credential: 是否需要凭证
+   - is_paid: 是否付费
+   - alternative_tools: 替代工具
+5. 根据分析结果，在对话中帮助用户执行安装或配置；危险操作必须请求用户确认。
+6. 如需自动生成完整报告，可运行：
+
+   ```bash
+   python -m video_to_action.cli "<视频链接>" --level auto
+   ```
+
+   注意：auto 模式需要在 `config/settings.yaml` 中配置外部 LLM，否则分析步骤会回退到占位结果。
 
 ## 自动化级别
 
-- `auto`：自动执行，仅在运行远程脚本/需要凭证/危险操作/连续失败时询问
-- `confirm`：每步执行前询问
+- `extract`：仅下载并提取文本，由 Trae 自身模型分析（无需外部 LLM API Key）
 - `observe`：只分析视频并输出计划，不执行
+- `confirm`：每步执行前询问
+- `auto`：自动执行，仅在运行远程脚本/需要凭证/危险操作/连续失败时询问
 
-默认使用 `auto` 模式。
+默认推荐先用 `extract` 模式，再由你（Trae）进行内容理解和操作。
 
 ## 安全边界
 

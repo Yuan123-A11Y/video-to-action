@@ -8,8 +8,9 @@ class Analyzer:
     """视频内容分析器。"""
 
     def __init__(self, config: dict):
-        """初始化分析器。"""
+        """初始化分析器，加载 LLM 配置。"""
         self.config = config
+        self.llm_config = config.get("llm", {})
 
     def _create_prompt(self, text: str, platform: str) -> str:
         """构建发送给 LLM 的分析提示。"""
@@ -42,20 +43,79 @@ class Analyzer:
             response = match.group(1)
         return json.loads(response.strip())
 
-    def analyze(self, text: str, platform: str) -> dict:
-        """分析视频内容并返回结构化计划。"""
-        # 在实际实现中，这里调用 LLM API
-        # 当前版本先返回一个模拟结果，供后续替换为真实 LLM 调用
-        # TODO: 替换为真实 LLM 调用
-        mock_response = {
+    def _build_mock_response(self, text: str) -> dict:
+        """构建未接入 LLM 时的默认回退响应。"""
+        return {
             "theme": "待分析",
-            "summary": "待 LLM 分析",
+            "summary": "当前未配置有效的 LLM 服务，仅返回占位结果。请配置 llm 部分后重新分析。",
             "tools": [],
             "needs_credential": False,
             "is_paid": False,
             "alternative_tools": [],
         }
-        return mock_response
+
+    def _call_llm(self, prompt: str) -> str:
+        """调用配置的 LLM 服务获取响应。
+
+        当前支持 OpenAI 兼容接口，通过 config/settings.yaml 中的 llm 字段配置。
+        """
+        provider = self.llm_config.get("provider", "mock")
+        if provider == "mock":
+            raise RuntimeError("LLM provider 设置为 mock")
+
+        if provider != "openai":
+            raise RuntimeError(f"不支持的 LLM provider: {provider}")
+
+        api_key = self.llm_config.get("api_key")
+        if not api_key:
+            raise RuntimeError("未配置 LLM API Key")
+
+        base_url = self.llm_config.get("base_url", "https://api.openai.com/v1")
+        model = self.llm_config.get("model", "gpt-4o-mini")
+        max_tokens = self.llm_config.get("max_tokens", 2048)
+        temperature = self.llm_config.get("temperature", 0.3)
+
+        # 延迟导入 httpx，避免在测试环境中强制依赖
+        import httpx
+
+        response = httpx.post(
+            f"{base_url.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "你是一个 helpful 的视频内容分析助手。",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            },
+            timeout=self.llm_config.get("timeout", 120),
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+
+    def analyze(self, text: str, platform: str) -> dict:
+        """分析视频内容并返回结构化计划。
+
+        优先调用真实 LLM；未配置或调用失败时回退到 mock 结果。
+        """
+        prompt = self._create_prompt(text, platform)
+        try:
+            response = self._call_llm(prompt)
+            return self._parse_json_response(response)
+        except Exception as e:
+            # LLM 调用失败时返回回退结果，避免整个流程中断
+            fallback = self._build_mock_response(text)
+            fallback["_llm_error"] = str(e)
+            return fallback
 
     def analyze_with_llm(self, text: str, platform: str, llm_callable) -> dict:
         """使用外部 LLM 可调用对象分析内容。"""

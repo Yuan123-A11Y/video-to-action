@@ -1,5 +1,6 @@
 """错误诊断与自动修复模块。"""
 
+import re
 from pathlib import Path
 
 
@@ -72,6 +73,32 @@ class Resolver:
 
         return None
 
+    def _extract_executable_command(self, suggestion: str) -> str | None:
+        """从建议文本中提取可执行的命令。
+
+        Args:
+            suggestion: suggest_fix 返回的修复建议字符串。
+
+        Returns:
+            可执行命令字符串；若建议不可执行则返回 None。
+        """
+        if not suggestion:
+            return None
+
+        suggestion_stripped = suggestion.strip()
+
+        # 直接以常见命令开头的建议可整体执行
+        direct_prefixes = ("pip ", "npm ", "git ", "ffmpeg ", "yt-dlp ")
+        if any(suggestion_stripped.startswith(prefix) for prefix in direct_prefixes):
+            return suggestion_stripped
+
+        # 提取 "尝试使用 sudo 执行：sudo xxx" 中的实际命令部分
+        sudo_match = re.search(r"[：:]\s*(sudo\s+.+)", suggestion_stripped)
+        if sudo_match:
+            return sudo_match.group(1).strip()
+
+        return None
+
     def resolve(self, command: str, error_output: str, attempt: int = 1) -> dict:
         """尝试诊断错误并返回修复结果。
 
@@ -87,11 +114,23 @@ class Resolver:
         if suggestion is None:
             return {
                 "resolved": False,
+                "executable": False,
                 "new_command": None,
                 "message": "无法自动诊断该错误，需要进一步排查。",
             }
+
+        new_command = self._extract_executable_command(suggestion)
+        if new_command:
+            return {
+                "resolved": True,
+                "executable": True,
+                "new_command": new_command,
+                "message": f"检测到问题，建议执行修复命令：{new_command}",
+            }
+
         return {
             "resolved": True,
-            "new_command": suggestion,
+            "executable": False,
+            "new_command": None,
             "message": f"检测到问题，建议修复方案：{suggestion}",
         }
