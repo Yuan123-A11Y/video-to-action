@@ -24,3 +24,19 @@ def test_detect_platform_delegates_to_utils():
 
     assert detect_video_platform("https://v.douyin.com/abc") == "douyin"
     assert detect_video_platform("https://www.youtube.com/watch?v=abc") == "youtube"
+
+
+from video_to_action.downloader import GreenVideoDownloader
+
+
+def test_greenvideo_url_for_platform():
+    """验证 GreenVideoDownloader 能根据平台读取对应的 greenvideo_url 配置。"""
+    config = {
+        "platforms": {
+            "douyin": {"greenvideo_url": "https://greenvideo.cc/douyin"},
+            "bilibili": {"greenvideo_url": "https://greenvideo.cc/bilibili"},
+        }
+    }
+    downloader = GreenVideoDownloader(config, output_dir=Path("outputs"))
+    assert downloader._get_platform_url("douyin") == "https://greenvideo.cc/douyin"
+    assert downloader._get_platform_url("bilibili") == "https://greenvideo.cc/bilibili"
