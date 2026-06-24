@@ -57,3 +57,4 @@ test_integration.py
 
 # WorkBuddy 本地状态
 .workbuddy/
+tools/douyin-downloader/config/cookies.json
