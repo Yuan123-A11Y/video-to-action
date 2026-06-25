@@ -12,7 +12,17 @@ def test_cli_observe_mode_short_circuits_execution():
         patch("video_to_action.cli.download_video") as mock_download,
         patch("video_to_action.cli.Extractor") as MockExtractor,
         patch("video_to_action.analyzer.Analyzer") as MockAnalyzer,
+        patch("video_to_action.cli.load_config") as mock_load_config,
     ):
+        # Mock 配置
+        mock_load_config.return_value = {
+            "automation_level": "observe",
+            "max_retries": 3,
+            "output_dir": "outputs",
+            "download": {"primary": "douyin-downloader", "fallback": "yt-dlp"},
+            "llm": {"provider": "mock"},
+            "safety": {"forbidden_keywords": [], "require_confirm": []},
+        }
         mock_download.return_value = {
             "success": True,
             "platform": "douyin",
