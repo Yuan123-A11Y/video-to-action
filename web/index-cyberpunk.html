@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video-to-Action | 智能分析引擎</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Orbitron', 'sans-serif'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Share Tech Mono', 'monospace'],
+                    },
+                    colors: {
+                        'cyber-bg': '#0a0e17',
+                        'cyber-bg-light': '#111827',
+                        'cyber-card': 'rgba(17, 24, 39, 0.7)',
+                        'neon-blue': '#00f0ff',
+                        'neon-purple': '#b400ff',
+                        'electric-blue': '#0080ff',
+                        'cyber-green': '#00ff88',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --neon-blue: #00f0ff;
+            --neon-purple: #b400ff;
+            --electric-blue: #0080ff;
+            --cyber-green: #00ff88;
+            --cyber-bg: #0a0e17;
+            --cyber-card: rgba(17, 24, 39, 0.6);
+            --glow-blue: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);
+            --glow-purple: 0 0 10px rgba(180, 0, 255, 0.5), 0 0 20px rgba(180, 0, 255, 0.3);
+        }
+        
+        body {
+            font-family: 'Rajdhani', 'Share Tech Mono', sans-serif;
+            background-color: var(--cyber-bg);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        
+        /* 网格背景 */
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        /* 粒子画布 */
+        #particles-canvas {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        /* 扫描线效果 */
+        .scanline {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            box-shadow: 0 0 15px var(--neon-blue), 0 0 30px rgba(0, 240, 255, 0.3);
+            z-index: 1;
+            animation: scanDown 8s linear infinite;
+            pointer-events: none;
+            opacity: 0.15;
+        }
+        
+        @keyframes scanDown {
+            0% { top: -2px; }
+            100% { top: 100%; }
+        }
+        
+        /* 玻璃态卡片 */
+        .glass-card {
+            background: var(--cyber-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            opacity: 0.5;
+        }
+        
+        /* 霓虹边框 */
+        .neon-border {
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .neon-border:hover {
+            border-color: rgba(0, 240, 255, 0.4);
+            box-shadow: 
+                inset 0 0 20px rgba(0, 240, 255, 0.1),
+                0 0 15px rgba(0, 240, 255, 0.2);
+        }
+        
+        /* 发光按钮 */
+        .btn-neon {
+            background: linear-gradient(135deg, rgba(0, 128, 255, 0.2), rgba(0, 240, 255, 0.2));
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: var(--neon-blue);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-neon::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .btn-neon:hover::before {
+            left: 100%;
+        }
+        
+        .btn-neon:hover {
+            background: linear-gradient(135deg, rgba(0, 128, 255, 0.3), rgba(0, 240, 255, 0.3));
+            border-color: var(--neon-blue);
+            box-shadow: var(--glow-blue);
+            transform: translateY(-2px);
+        }
+        
+        .btn-neon:active {
+            transform: translateY(0);
+        }
+        
+        /* 输入框 */
+        .cyber-input {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .cyber-input:focus {
+            outline: none;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), inset 0 0 10px rgba(0, 240, 255, 0.05);
+            background: rgba(0, 0, 0, 0.6);
+        }
+        
+        .cyber-input::placeholder {
+            color: rgba(226, 232, 240, 0.3);
+        }
+        
+        /* 侧边栏 */
+        .sidebar-cyber {
+            background: linear-gradient(180deg, rgba(10, 14, 23, 0.95), rgba(17, 24, 39, 0.95));
+            border-right: 1px solid rgba(0, 240, 255, 0.1);
+            backdrop-filter: blur(20px);
+        }
+        
+        .nav-item {
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            color: rgba(226, 232, 240, 0.6);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .nav-item:hover {
+            color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.05);
+        }
+        
+        .nav-item.active {
+            color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.1);
+            border-left: 2px solid var(--neon-blue);
+            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.1);
+            text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+        }
+        
+        /* 数据卡片 */
+        .stat-card {
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.8), rgba(10, 14, 23, 0.8));
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), var(--neon-purple), transparent);
+            opacity: 0.6;
+        }
+        
+        /* 数字滚动 */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .count-animate {
+            animation: countUp 0.5s ease-out forwards;
+        }
+        
+        /* 脉冲点 */
+        .pulse-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            animation: pulseRing 2s ease-out infinite;
+        }
+        
+        @keyframes pulseRing {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+        
+        /* 加载动画 */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        /* 淡入 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        /* Toast */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .toast {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        /* 进度条 */
+        .progress-bar {
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* 标签 */
+        .tag-cyber {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            color: var(--neon-blue);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        
+        /* 开关 */
+        .toggle-cyber {
+            width: 44px; height: 24px;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-cyber.active {
+            background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+        }
+        
+        .toggle-cyber.inactive {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .toggle-cyber span {
+            position: absolute;
+            top: 3px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .toggle-cyber.active span {
+            left: 23px;
+        }
+        
+        .toggle-cyber.inactive span {
+            left: 3px;
+        }
+        
+        /* 模态框 */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        /* 代码块 */
+        .code-block {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--cyber-green);
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { 
+            background: rgba(0, 240, 255, 0.3); 
+            border-radius: 3px; 
+        }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.5); }
+        
+        /* 级别选择器 */
+        .level-btn-cyber {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .level-btn-cyber:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            background: rgba(0, 240, 255, 0.05);
+        }
+        
+        .level-btn-cyber.active {
+            border-color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2), inset 0 0 15px rgba(0, 240, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 背景效果 -->
+    <div class="grid-bg"></div>
+    <canvas id="particles-canvas"></canvas>
+    <div class="scanline"></div>
+    
+    <!-- 移动端侧边栏遮罩 -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/70 z-40 hidden" onclick="toggleSidebar()"></div>
+    
+    <!-- 顶部导航（移动端） -->
+    <header class="md:hidden fixed top-0 left-0 right-0 z-30 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-4 py-3 flex items-center justify-between">
+        <button onclick="toggleSidebar()" class="text-[#e2e8f0] hover:text-[#00f0ff] transition-colors p-1 -ml-1">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
+        </button>
+        <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 bg-gradient-to-br from-[#0080ff] to-[#00f0ff] rounded-lg flex items-center justify-center shadow-lg shadow-[rgba(0,240,255,0.3)]">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+            </div>
+            <span class="font-display font-bold text-[#00f0ff] text-sm tracking-wider">V2A</span>
+        </div>
+        <div class="w-6"></div>
+    </header>
+    
+    <div class="flex min-h-screen pt-16 md:pt-0">
+        <!-- 侧边栏 -->
+        <aside id="sidebar" class="sidebar-cyber fixed md:static inset-y-0 left-0 z-50 w-64 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl shadow-[rgba(0,240,255,0.1)]">
+            <!-- 品牌 -->
+            <div class="px-6 py-5 border-b border-[rgba(0,240,255,0.1)]">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-[#0080ff] to-[#00f0ff] rounded-xl flex items-center justify-center shadow-lg shadow-[rgba(0,240,255,0.4)]">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                    </div>
+                    <div>
+                        <h1 class="font-display font-bold text-[#00f0ff] text-base tracking-wider" style="text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);">VIDEO-TO-ACTION</h1>
+                        <p class="text-[10px] text-[rgba(226,232,240,0.4)] mt-0.5 font-mono tracking-wider">// INTELLIGENCE ENGINE</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 导航 -->
+            <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+                <p class="px-3 mb-2 text-[9px] font-bold text-[rgba(226,232,240,0.3)] uppercase tracking-[2px] font-mono">Core Module</p>
+                
+                <button onclick="showPage('process')" id="nav-process" class="nav-item active w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+                    <span>Process Video</span>
+                </button>
+                
+                <button onclick="showPage('videos')" id="nav-videos" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                    <span>Video Library</span>
+                </button>
+                
+                <button onclick="showPage('tools')" id="nav-tools" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
+                    <span>Tool Database</span>
+                </button>
+                
+                <button onclick="showPage('search')" id="nav-search" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    <span>Search Engine</span>
+                </button>
+                
+                <div class="my-4 border-t border-[rgba(0,240,255,0.05)]"></div>
+                <p class="px-3 mb-2 text-[9px] font-bold text-[rgba(226,232,240,0.3)] uppercase tracking-[2px] font-mono">Analytics</p>
+                
+                <button onclick="showPage('stats')" id="nav-stats" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                    <span>Statistics</span>
+                </button>
+            </nav>
+            
+            <!-- 底部状态 -->
+            <div class="px-5 py-4 border-t border-[rgba(0,240,255,0.05)]">
+                <div class="flex items-center space-x-2.5">
+                    <div id="api-status-dot" class="pulse-dot bg-[rgba(226,232,240,0.2)] text-[rgba(226,232,240,0.2)]"></div>
+                    <span id="api-status-text" class="text-[10px] text-[rgba(226,232,240,0.4)] font-mono">INITIALIZING...</span>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- 主内容区 -->
+        <main class="flex-1 overflow-y-auto relative z-10 pb-20 md:pb-8">
+            <!-- 处理视频页面 -->
+            <div id="page-process" class="page p-4 md:p-8 max-w-4xl mx-auto">
+                <div class="mb-8 fade-in" style="animation-delay: 0.1s;">
+                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">PROCESS VIDEO</h1>
+                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2 font-mono">// AI-powered video analysis & automation engine</p>
+                </div>
+                
+                <div class="glass-card p-8 mb-6 fade-in" style="animation-delay: 0.2s;">
+                    <div class="space-y-6">
+                        <!-- URL 输入 -->
+                        <div>
+                            <label class="flex items-center space-x-2 text-sm font-bold text-[#00f0ff] mb-2 font-mono">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.12a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.343 8.31m6.364-6.364l-2.828 2.828"/></svg>
+                                <span>VIDEO_URI</span>
+                            </label>
+                            <input type="text" id="video-url" placeholder="https:// or /local/path/to/video"
+                                class="cyber-input w-full pl-4 pr-4 py-3 text-sm"
+                                onkeydown="if(event.key==='Enter') processVideo()">
+                            <p class="text-[11px] text-[rgba(226,232,240,0.3)] mt-2 font-mono">// supports: YouTube, Bilibili, Douyin, local files</p>
+                        </div>
+                        
+                        <!-- 自动化级别 -->
+                        <div>
+                            <label class="flex items-center space-x-2 text-sm font-bold text-[#00f0ff] mb-3 font-mono">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/></svg>
+                                <span>AUTOMATION_LEVEL</span>
+                            </label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="level-selector">
+                                <button type="button" onclick="selectLevel('extract')" id="level-extract"
+                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
+                                    <div class="font-mono font-bold text-[rgba(226,232,240,0.8)]">EXTRACT</div>
+                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1 font-mono">Text only</div>
+                                </button>
+                                <button type="button" onclick="selectLevel('observe')" id="level-observe"
+                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
+                                    <div class="font-mono font-bold text-[rgba(226,232,240,0.8)]">OBSERVE</div>
+                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1 font-mono">Analyze only</div>
+                                </button>
+                                <button type="button" onclick="selectLevel('confirm')" id="level-confirm"
+                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
+                                    <div class="font-mono font-bold text-[rgba(226,232,240,0.8)]">CONFIRM</div>
+                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1 font-mono">Step confirm</div>
+                                </button>
+                                <button type="button" onclick="selectLevel('auto')" id="level-auto"
+                                    class="level-btn-cyber active px-4 py-3 text-sm text-left">
+                                    <div class="font-mono font-bold text-[#00f0ff]">AUTO</div>
+                                    <div class="text-[10px] text-[rgba(0,240,255,0.5)] mt-1 font-mono">Full auto</div>
+                                </button>
+                            </div>
+                            <input type="hidden" id="process-level" value="auto">
+                        </div>
+                        
+                        <!-- 选项 -->
+                        <div class="flex items-center justify-between py-3 px-4 bg-[rgba(0,0,0,0.3)] rounded-lg border border-[rgba(0,240,255,0.05)]">
+                            <div class="flex items-center space-x-2">
+                                <svg class="w-4 h-4 text-[#00f0ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                                <label for="save-to-kb" class="text-sm font-medium text-[rgba(226,232,240,0.7)] cursor-pointer font-mono">SAVE_TO_KNOWLEDGE_BASE</label>
+                            </div>
+                            <div id="save-to-kb-toggle" onclick="toggleSwitch('save-to-kb-toggle', 'save-to-kb')" class="toggle-cyber active">
+                                <span></span>
+                            </div>
+                            <input type="checkbox" id="save-to-kb" checked class="hidden">
+                        </div>
+                        
+                        <!-- 提交按钮 -->
+                        <button onclick="processVideo()"
+                            id="process-btn"
+                            class="btn-neon w-full py-3 px-6 rounded-lg text-sm font-bold tracking-wider">
+                            [ EXECUTE PROCESS ]
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 处理进度 -->
+                <div id="processing-status" class="hidden">
+                    <div class="glass-card p-8 fade-in">
+                        <h2 class="font-display text-lg font-bold text-white mb-6 tracking-wider" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">PROCESSING STATUS</h2>
+                        <div id="progress-steps" class="space-y-4">
+                            <!-- 动态填充 -->
+                        </div>
+                        <div id="processing-result" class="hidden mt-6 pt-6 border-t border-[rgba(0,240,255,0.1)]">
+                            <h3 class="text-sm font-bold text-[#00f0ff] mb-3 font-mono">OUTPUT_RESULT</h3>
+                            <pre id="result-content" class="code-block p-5 rounded-lg text-[12px] leading-relaxed overflow-x-auto max-h-72"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 视频库页面 -->
+            <div id="page-videos" class="page hidden p-4 md:p-8">
+                <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">VIDEO LIBRARY</h1>
+                        <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2 font-mono" id="videos-count-text">// loading database...</p>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="video-search" placeholder="SEARCH..."
+                            class="cyber-input pl-10 pr-4 py-2.5 text-sm w-56"
+                            oninput="filterVideos()">
+                        <svg class="w-4 h-4 absolute left-3.5 top-3 text-[rgba(226,232,240,0.3)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    </div>
+                </div>
+                <div id="videos-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <!-- 骨架屏 -->
+                </div>
+            </div>
+            
+            <!-- 工具库页面 -->
+            <div id="page-tools" class="page hidden p-4 md:p-8">
+                <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">TOOL DATABASE</h1>
+                        <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2 font-mono" id="tools-count-text">// loading database...</p>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="tool-search" placeholder="SEARCH..."
+                            class="cyber-input pl-10 pr-4 py-2.5 text-sm w-56"
+                            oninput="filterTools()">
+                        <svg class="w-4 h-4 absolute left-3.5 top-3 text-[rgba(226,232,240,0.3)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    </div>
+                </div>
+                <div id="tools-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <!-- 骨架屏 -->
+                </div>
+            </div>
+            
+            <!-- 搜索页面 -->
+            <div id="page-search" class="page hidden p-4 md:p-8 max-w-3xl mx-auto">
+                <div class="mb-8">
+                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">SEARCH ENGINE</h1>
+                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2 font-mono">// query knowledge database</p>
+                </div>
+                
+                <div class="glass-card p-8 mb-8">
+                    <div class="flex space-x-3">
+                        <input type="text" id="search-query" placeholder="INPUT_QUERY..."
+                            class="cyber-input flex-1 pl-4 pr-4 py-3 text-sm"
+                            onkeydown="if(event.key==='Enter') searchKnowledgeBase()">
+                        <select id="search-type"
+                            class="cyber-input px-4 py-3 text-sm w-32">
+                            <option value="video">VIDEO</option>
+                            <option value="tool">TOOL</option>
+                        </select>
+                        <button onclick="searchKnowledgeBase()"
+                            class="btn-neon px-6 py-3 rounded-lg text-sm font-bold tracking-wider whitespace-nowrap">
+                            [ SEARCH ]
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="search-results"></div>
+            </div>
+            
+            <!-- 统计页面 -->
+            <div id="page-stats" class="page hidden p-4 md:p-8">
+                <div class="mb-8">
+                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">STATISTICS</h1>
+                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2 font-mono">// system analytics dashboard</p>
+                </div>
+                <div id="stats-content" class="grid gap-6 md:grid-cols-3">
+                    <!-- 动态填充 -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- 底部导航（移动端） -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-t border-[rgba(0,240,255,0.1)] z-20">
+        <div class="flex items-center justify-around px-2 py-1">
+            <button onclick="showPage('process')" class="flex flex-col items-center py-2 px-3 text-[10px] font-mono font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+                <span>PROCESS</span>
+            </button>
+            <button onclick="showPage('videos')" class="flex flex-col items-center py-2 px-3 text-[10px] font-mono font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                <span>LIBRARY</span>
+            </button>
+            <button onclick="showPage('tools')" class="flex flex-col items-center py-2 px-3 text-[10px] font-mono font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
+                <span>TOOLS</span>
+            </button>
+            <button onclick="showPage('search')" class="flex flex-col items-center py-2 px-3 text-[10px] font-mono font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                <span>SEARCH</span>
+            </button>
+            <button onclick="showPage('stats')" class="flex flex-col items-center py-2 px-3 text-[10px] font-mono font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
+                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                <span>STATS</span>
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Toast 通知 -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000/api';
+        let currentLevel = 'auto';
+        let allVideos = [];
+        let allTools = [];
+        
+        // ============ 粒子效果 ============
+        function initParticles() {
+            const canvas = document.getElementById('particles-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            const particles = [];
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: (Math.random() - 0.5) * 0.5,
+                    size: Math.random() * 2 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.1,
+                });
+            }
+            
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                    
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(0, 240, 255, ${p.opacity})`;
+                    ctx.fill();
+                });
+                
+                // 连线
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 120) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = `rgba(0, 240, 255, ${0.1 * (1 - dist / 120)})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+        
+        // ============ 侧边栏 ============
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = !sidebar.classList.contains('-translate-x-full');
+            if (isOpen) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            }
+        }
+        
+        // ============ 页面切换 ============
+        function showPage(pageName) {
+            document.querySelectorAll('.page').forEach(p => {
+                p.classList.add('hidden');
+            });
+            const targetPage = document.getElementById(`page-${pageName}`);
+            targetPage.classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(b => {
+                b.classList.remove('active');
+            });
+            document.getElementById(`nav-${pageName}`).classList.add('active');
+            
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            }
+            
+            if (pageName === 'videos') loadVideos();
+            if (pageName === 'tools') loadTools();
+            if (pageName === 'stats') loadStats();
+        }
+        
+        // ============ 级别选择 ============
+        function selectLevel(level) {
+            currentLevel = level;
+            document.getElementById('process-level').value = level;
+            document.querySelectorAll('.level-btn-cyber').forEach(btn => {
+                btn.classList.remove('active');
+                const label = btn.querySelector('div:first-child');
+                const sub = btn.querySelector('div:last-child');
+                label.classList.remove('text-[#00f0ff]');
+                label.classList.add('text-[rgba(226,232,240,0.8)]');
+                sub.classList.remove('text-[rgba(0,240,255,0.5)]');
+                sub.classList.add('text-[rgba(226,232,240,0.3)]');
+            });
+            const active = document.getElementById(`level-${level}`);
+            active.classList.add('active');
+            active.querySelector('div:first-child').classList.remove('text-[rgba(226,232,240,0.8)]');
+            active.querySelector('div:first-child').classList.add('text-[#00f0ff]');
+            active.querySelector('div:last-child').classList.remove('text-[rgba(226,232,240,0.3)]');
+            active.querySelector('div:last-child').classList.add('text-[rgba(0,240,255,0.5)]');
+        }
+        
+        // ============ 开关切换 ============
+        function toggleSwitch(buttonId, inputId) {
+            const input = document.getElementById(inputId);
+            const btn = document.getElementById(buttonId);
+            input.checked = !input.checked;
+            if (input.checked) {
+                btn.classList.remove('inactive');
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+                btn.classList.add('inactive');
+            }
+        }
+        
+        // ============ Toast ============
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const bgColors = {
+                success: 'rgba(0, 255, 136, 0.9)',
+                error: 'rgba(255, 50, 50, 0.9)',
+                info: 'rgba(0, 240, 255, 0.9)',
+                warning: 'rgba(255, 180, 0, 0.9)',
+            };
+            const icons = {
+                success: '✓',
+                error: '✗',
+                info: 'ⓘ',
+                warning: '⚠',
+            };
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.cssText = `
+                background: ${bgColors[type]};
+                color: #0a0e17;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 13px;
+                font-weight: 600;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                display: flex;
+                align-items: center;
+                space-x: 8px;
+            `;
+            toast.innerHTML = `<span style="margin-right:8px;font-size:16px;">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // ============ 处理视频 ============
+        async function processVideo() {
+            const url = document.getElementById('video-url').value.trim();
+            if (!url) {
+                showToast('INPUT REQUIRED: Video URL', 'warning');
+                document.getElementById('video-url').focus();
+                return;
+            }
+            
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.textContent = '[ PROCESSING... ]';
+            
+            const statusDiv = document.getElementById('processing-status');
+            statusDiv.classList.remove('hidden');
+            document.getElementById('progress-steps').innerHTML = `
+                <div class="flex items-center space-x-3 text-sm font-mono">
+                    <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
+                    <span class="text-[#00f0ff]">INITIALIZING TASK...</span>
+                </div>`;
+            
+            try {
+                const response = await axios.post(`${API_BASE}/process`, {
+                    url: url,
+                    level: currentLevel,
+                    save_to_kb: document.getElementById('save-to-kb').checked,
+                });
+                
+                const taskId = response.data.data.task_id;
+                document.getElementById('progress-steps').innerHTML = `
+                    <div class="flex items-center space-x-3 text-sm font-mono text-[#00ff88]">
+                        <span class="text-lg">✓</span>
+                        <span>TASK SUBMITTED <span class="font-mono text-xs bg-[rgba(0,240,255,0.1)] px-2 py-0.5 rounded">#${taskId}</span></span>
+                    </div>
+                    <div id="step-processing" class="flex items-center space-x-3 text-sm font-mono text-[#00f0ff]">
+                        <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
+                        <span>PROCESSING...</span>
+                    </div>`;
+                btn.textContent = '[ PROCESSING ]';
+                pollTaskStatus(taskId);
+            } catch (error) {
+                document.getElementById('progress-steps').innerHTML = `
+                    <div class="flex items-center space-x-3 text-sm font-mono text-red-400">
+                        <span class="text-lg">✗</span>
+                        <span>ERROR: ${error.response?.data?.detail || error.message}</span>
+                    </div>`;
+                btn.disabled = false;
+                btn.textContent = '[ EXECUTE PROCESS ]';
+                showToast('TASK FAILED', 'error');
+            }
+        }
+        
+        async function pollTaskStatus(taskId) {
+            try {
+                const response = await axios.get(`${API_BASE}/tasks/${taskId}`);
+                const task = response.data;
+                
+                if (task.status === 'processing') {
+                    setTimeout(() => pollTaskStatus(taskId), 2000);
+                } else if (task.status === 'completed') {
+                    document.getElementById('step-processing').innerHTML = `
+                        <span class="text-[#00ff88] text-lg">✓</span>
+                        <span class="text-[#00ff88] font-mono">PROCESSING COMPLETE</span>`;
+                    const resultDiv = document.getElementById('processing-result');
+                    resultDiv.classList.remove('hidden');
+                    document.getElementById('result-content').textContent = JSON.stringify(task.result, null, 2);
+                    document.getElementById('process-btn').disabled = false;
+                    document.getElementById('process-btn').textContent = '[ EXECUTE PROCESS ]';
+                    showToast('PROCESSING COMPLETE', 'success');
+                } else if (task.status === 'failed') {
+                    document.getElementById('step-processing').innerHTML = `
+                        <span class="text-red-400 text-lg">✗</span>
+                        <span class="text-red-400 font-mono">ERROR: ${task.result?.error || 'UNKNOWN'}</span>`;
+                    document.getElementById('process-btn').disabled = false;
+                    document.getElementById('process-btn').textContent = '[ EXECUTE PROCESS ]';
+                    showToast('PROCESSING FAILED', 'error');
+                }
+            } catch (error) {
+                setTimeout(() => pollTaskStatus(taskId), 3000);
+            }
+        }
+        
+        // ============ 视频库 ============
+        function showSkeleton(count) {
+            return Array(count).fill(0).map(() => `
+                <div class="glass-card p-6">
+                    <div class="h-5 bg-[rgba(0,240,255,0.1)] rounded w-3/4 mb-4 animate-pulse"></div>
+                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-1/2 mb-2 animate-pulse"></div>
+                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-full animate-pulse"></div>
+                </div>`).join('');
+        }
+        
+        function showEmptyState(type) {
+            const labels = {
+                video: 'NO VIDEOS',
+                tool: 'NO TOOLS',
+                search: 'NO RESULTS',
+                error: 'LOAD ERROR',
+            };
+            const descriptions = {
+                video: '// add videos to build knowledge base',
+                tool: '// tools will appear after processing',
+                search: '// try different query parameters',
+                error: '// check network connection',
+            };
+            return `
+                <div class="col-span-full text-center py-20">
+                    <p class="font-display text-2xl font-bold text-[rgba(226,232,240,0.2)] tracking-wider">[ ${labels[type]} ]</p>
+                    <p class="text-[rgba(226,232,240,0.3)] text-sm mt-2 font-mono">${descriptions[type]}</p>
+                </div>`;
+        }
+        
+        async function loadVideos() {
+            const listDiv = document.getElementById('videos-list');
+            listDiv.innerHTML = showSkeleton(6);
+            try {
+                const response = await axios.get(`${API_BASE}/videos?limit=100`);
+                allVideos = response.data.videos;
+                document.getElementById('videos-count-text').textContent = `// ${allVideos.length} entries found`;
+                renderVideos(allVideos);
+            } catch (error) {
+                listDiv.innerHTML = showEmptyState('error');
+                showToast('LOAD FAILED', 'error');
+            }
+        }
+        
+        function renderVideos(videos) {
+            const listDiv = document.getElementById('videos-list');
+            if (videos.length === 0) {
+                listDiv.innerHTML = showEmptyState('video');
+                return;
+            }
+            listDiv.innerHTML = videos.map((v, i) => `
+                <div class="glass-card p-6 cursor-pointer fade-in neon-border" style="animation-delay: ${i * 50}ms" onclick="viewVideo(${v.id})">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="tag-cyber">${v.platform}</span>
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] font-mono">${new Date(v.created_at).toLocaleDateString('zh-CN')}</span>
+                    </div>
+                    <h3 class="font-bold text-white text-sm mb-2 leading-snug">${v.theme || 'UNKNOWN'}</h3>
+                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${v.summary || 'NO_DATA'}</p>
+                    <div class="mt-4 pt-4 border-t border-[rgba(0,240,255,0.05)] flex items-center justify-between">
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] font-mono">VIEW_DETAILS</span>
+                        <svg class="w-4 h-4 text-[rgba(0,240,255,0.5)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                    </div>
+                </div>`).join('');
+        }
+        
+        function filterVideos() {
+            const query = document.getElementById('video-search').value.toLowerCase();
+            const filtered = allVideos.filter(v =>
+                (v.theme || '').toLowerCase().includes(query) ||
+                (v.platform || '').toLowerCase().includes(query) ||
+                (v.summary || '').toLowerCase().includes(query)
+            );
+            renderVideos(filtered);
+        }
+        
+        // ============ 工具库 ============
+        async function loadTools() {
+            const listDiv = document.getElementById('tools-list');
+            listDiv.innerHTML = showSkeleton(6);
+            try {
+                const response = await axios.get(`${API_BASE}/tools?limit=100`);
+                allTools = response.data.tools;
+                document.getElementById('tools-count-text').textContent = `// ${allTools.length} entries found`;
+                renderTools(allTools);
+            } catch (error) {
+                listDiv.innerHTML = showEmptyState('error');
+                showToast('LOAD FAILED', 'error');
+            }
+        }
+        
+        function renderTools(tools) {
+            const listDiv = document.getElementById('tools-list');
+            if (tools.length === 0) {
+                listDiv.innerHTML = showEmptyState('tool');
+                return;
+            }
+            listDiv.innerHTML = tools.map((t, i) => `
+                <div class="glass-card p-6 cursor-pointer fade-in neon-border" style="animation-delay: ${i * 50}ms" onclick="viewTool(${t.id})">
+                    <div class="flex items-start justify-between mb-3">
+                        <h3 class="font-bold text-white text-sm font-mono">${t.name}</h3>
+                        <div class="flex space-x-1.5">
+                            ${t.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">PAID</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">FREE</span>'}
+                            ${t.needs_credential ? '<span class="tag-cyber" style="border-color:rgba(255,50,50,0.3);color:#ff3232;">CRED</span>' : ''}
+                        </div>
+                    </div>
+                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${t.purpose || 'NO_DATA'}</p>
+                    <div class="mt-4 pt-4 border-t border-[rgba(0,240,255,0.05)] flex items-center justify-between">
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] font-mono">VIEW_DETAILS</span>
+                        <svg class="w-4 h-4 text-[rgba(0,240,255,0.5)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+                    </div>
+                </div>`).join('');
+        }
+        
+        function filterTools() {
+            const query = document.getElementById('tool-search').value.toLowerCase();
+            const filtered = allTools.filter(t =>
+                (t.name || '').toLowerCase().includes(query) ||
+                (t.purpose || '').toLowerCase().includes(query)
+            );
+            renderTools(filtered);
+        }
+        
+        // ============ 搜索 ============
+        async function searchKnowledgeBase() {
+            const query = document.getElementById('search-query').value.trim();
+            const type = document.getElementById('search-type').value;
+            if (!query) {
+                showToast('INPUT REQUIRED: Search query', 'warning');
+                return;
+            }
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = '<div class="text-[rgba(226,232,240,0.5)] text-sm py-4 font-mono">// searching database...</div>';
+            try {
+                const response = await axios.get(`${API_BASE}/search?query=${encodeURIComponent(query)}&type=${type}`);
+                const results = response.data.results;
+                if (results.length === 0) {
+                    resultsDiv.innerHTML = showEmptyState('search');
+                    return;
+                }
+                if (type === 'video') {
+                    resultsDiv.innerHTML = `
+                        <h3 class="font-display text-xl font-bold text-white mb-5 tracking-wider" style="text-shadow: 0 0 10px rgba(255,255,255,0.2);">// ${results.length} RESULTS</h3>
+                        <div class="space-y-4">
+                            ${results.map(r => `
+                                <div class="glass-card p-5 cursor-pointer neon-border" onclick="viewVideo(${r.id})">
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <span class="tag-cyber">${r.platform}</span>
+                                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] font-mono">${new Date(r.created_at).toLocaleDateString('zh-CN')}</span>
+                                    </div>
+                                    <h4 class="font-semibold text-white text-sm">${r.theme || 'UNKNOWN'}</h4>
+                                    <p class="text-xs text-[rgba(226,232,240,0.5)] mt-1.5 leading-relaxed">${r.summary || 'NO_DATA'}</p>
+                                </div>`).join('')}
+                        </div>`;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <h3 class="font-display text-xl font-bold text-white mb-5 tracking-wider" style="text-shadow: 0 0 10px rgba(255,255,255,0.2);">// ${results.length} RESULTS</h3>
+                        <div class="space-y-4">
+                            ${results.map(r => `
+                                <div class="glass-card p-5 cursor-pointer neon-border" onclick="viewTool(${r.id})">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-semibold text-white text-sm font-mono">${r.name}</h4>
+                                        ${r.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">PAID</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">FREE</span>'}
+                                    </div>
+                                    <p class="text-xs text-[rgba(226,232,240,0.5)]">${r.purpose || 'NO_DATA'}</p>
+                                </div>`).join('')}
+                        </div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="text-red-400 text-sm py-4 font-mono">// ERROR: ${error.message}</div>`;
+            }
+        }
+        
+        // ============ 统计 ============
+        async function loadStats() {
+            const contentDiv = document.getElementById('stats-content');
+            contentDiv.innerHTML = showSkeleton(3);
+            try {
+                const response = await axios.get(`${API_BASE}/stats`);
+                const stats = response.data;
+                const platformData = stats.platform_stats || [];
+                
+                let platformHtml = '';
+                if (platformData.length > 0) {
+                    const maxCount = Math.max(...platformData.map(p => p.count));
+                    platformHtml = platformData.map(p => `
+                        <div class="flex items-center space-x-3">
+                            <span class="text-sm text-[rgba(226,232,240,0.7)] w-16 truncate font-mono">${p.platform}</span>
+                            <div class="flex-1 bg-[rgba(0,0,0,0.4)] rounded-full h-2 overflow-hidden">
+                                <div class="bg-gradient-to-r from-[#0080ff] to-[#00f0ff] h-full rounded-full transition-all duration-500" style="width: ${(p.count / maxCount * 100).toFixed(0)}%; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);"></div>
+                            </div>
+                            <span class="text-sm font-bold text-[#00f0ff] w-8 text-right font-mono">${p.count}</span>
+                        </div>`).join('');
+                } else {
+                    platformHtml = '<div class="text-[rgba(226,232,240,0.3)] text-sm py-2 font-mono">// no data available</div>';
+                }
+                
+                contentDiv.innerHTML = `
+                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.1s;">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] font-mono tracking-wider">VIDEO_COUNT</span>
+                            <div class="w-10 h-10 bg-[rgba(0,128,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(0, 128, 255, 0.3);">
+                                <svg class="w-5 h-5 text-[#0080ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                            </div>
+                        </div>
+                        <p class="text-5xl font-display font-black text-white tracking-wider count-animate" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">${stats.video_count}</p>
+                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2 font-mono">// total processed videos</p>
+                    </div>
+                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.2s;">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] font-mono tracking-wider">TOOL_COUNT</span>
+                            <div class="w-10 h-10 bg-[rgba(180,0,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(180, 0, 255, 0.3);">
+                                <svg class="w-5 h-5 text-[#b400ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
+                            </div>
+                        </div>
+                        <p class="text-5xl font-display font-black text-white tracking-wider count-animate" style="text-shadow: 0 0 20px rgba(180, 0, 255, 0.3);">${stats.tool_count}</p>
+                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2 font-mono">// total identified tools</p>
+                    </div>
+                    <div class="stat-card p-8 md:col-span-3 lg:col-span-1 fade-in" style="animation-delay: 0.3s;">
+                        <h3 class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] font-mono tracking-wider mb-6">PLATFORM_DIST</h3>
+                        <div class="space-y-4">${platformHtml}</div>
+                    </div>`;
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="col-span-full text-red-400 text-sm py-4 font-mono">// ERROR: ${error.message}</div>`;
+                showToast('LOAD FAILED', 'error');
+            }
+        }
+        
+        // ============ 视频/工具详情 ============
+        async function viewVideo(videoId) {
+            try {
+                const response = await axios.get(`${API_BASE}/videos/${videoId}`);
+                const v = response.data;
+                const tools = v.tools || [];
+                
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="fixed inset-0 modal-overlay transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
+                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
+                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
+                            <h2 class="font-display text-xl font-bold text-white tracking-wider" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">VIDEO DETAIL</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#00f0ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,240,255,0.05)]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div>
+                                <span class="tag-cyber">${v.platform}</span>
+                                <h3 class="text-2xl font-bold text-white mt-3 font-display tracking-wider" style="text-shadow: 0 0 15px rgba(255,255,255,0.2);">${v.theme || 'UNKNOWN'}</h3>
+                                <p class="text-sm text-[rgba(226,232,240,0.5)] mt-1.5 font-mono">// ${new Date(v.created_at).toLocaleString('zh-CN')}</p>
+                            </div>
+                            <div>
+                                <h4 class="text-[11px] font-bold text-[rgba(226,232,240,0.4)] font-mono tracking-wider mb-2">SUMMARY</h4>
+                                <p class="text-sm text-[rgba(226,232,240,0.8)] leading-relaxed">${v.summary || 'NO_DATA'}</p>
+                            </div>
+                            ${tools.length > 0 ? `
+                            <div>
+                                <h4 class="text-[11px] font-bold text-[rgba(226,232,240,0.4)] font-mono tracking-wider mb-2.5">TOOLS_DETECTED</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${tools.map(t => `<span class="tag-cyber">${t.name}</span>`).join('')}
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+            } catch (error) {
+                showToast('LOAD FAILED', 'error');
+            }
+        }
+        
+        async function viewTool(toolId) {
+            try {
+                const response = await axios.get(`${API_BASE}/tools/${toolId}`);
+                const t = response.data;
+                const videos = t.videos || [];
+                
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="fixed inset-0 modal-overlay transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
+                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
+                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
+                            <h2 class="font-display text-xl font-bold text-white tracking-wider" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">TOOL DETAIL</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#00f0ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,240,255,0.05)]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <h3 class="text-2xl font-bold text-white font-display tracking-wider" style="text-shadow: 0 0 15px rgba(255,255,255,0.2);">${t.name}</h3>
+                                    ${t.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">PAID</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">FREE</span>'}
+                                    ${t.needs_credential ? '<span class="tag-cyber" style="border-color:rgba(255,50,50,0.3);color:#ff3232;">CRED</span>' : ''}
+                                </div>
+                                <p class="text-sm text-[rgba(226,232,240,0.7)] leading-relaxed">${t.purpose || 'NO_DATA'}</p>
+                            </div>
+                            ${t.install_commands && t.install_commands.length > 0 ? `
+                            <div>
+                                <h4 class="text-[11px] font-bold text-[rgba(226,232,240,0.4)] font-mono tracking-wider mb-2.5">INSTALL_CMD</h4>
+                                <div class="space-y-2">
+                                    ${t.install_commands.map(c => `<code class="code-block block p-4 rounded-lg text-[12px] font-mono overflow-x-auto">$ ${c}</code>`).join('')}
+                                </div>
+                            </div>` : ''}
+                            ${videos.length > 0 ? `
+                            <div>
+                                <h4 class="text-[11px] font-bold text-[rgba(226,232,240,0.4)] font-mono tracking-wider mb-2.5">SOURCE_VIDEOS</h4>
+                                <div class="space-y-2">
+                                    ${videos.map(v => `<div class="text-sm text-[rgba(226,232,240,0.7)] cursor-pointer hover:text-[#00f0ff] transition-colors font-mono" onclick="viewVideo(${v.id}); this.closest('.fixed').remove();">> ${v.theme || 'UNKNOWN'}</div>`).join('')}
+                                </div>
+                            </div>` : ''}
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+            } catch (error) {
+                showToast('LOAD FAILED', 'error');
+            }
+        }
+        
+        // ============ API 健康检查 ============
+        async function checkApiHealth() {
+            const dot = document.getElementById('api-status-dot');
+            const text = document.getElementById('api-status-text');
+            try {
+                await axios.get(`${API_BASE}/stats`, { timeout: 3000 });
+                dot.className = 'pulse-dot bg-[#00ff88] text-[#00ff88]';
+                text.textContent = 'API_CONNECTED';
+                text.className = 'text-[10px] text-[#00ff88] font-mono';
+            } catch {
+                dot.className = 'pulse-dot bg-red-500 text-red-500';
+                text.textContent = 'API_OFFLINE';
+                text.className = 'text-[10px] text-red-500 font-mono';
+            }
+        }
+        
+        // ============ 初始化 ============
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            showPage('process');
+            checkApiHealth();
+            setInterval(checkApiHealth, 10000);
+        });
+    </script>
+</body>
+</html>

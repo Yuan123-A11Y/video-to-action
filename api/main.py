@@ -32,7 +32,22 @@ app.add_middleware(
 
 # 全局配置
 config = load_config()
-kb = KnowledgeBase()
+
+# 根据配置选择数据库类型
+db_config = config.get("database", {})
+if db_config.get("type") == "mysql":
+    from video_to_action.mysql_knowledge_base import MySQLKnowledgeBase
+    kb = MySQLKnowledgeBase(
+        host=db_config.get("host", "localhost"),
+        port=db_config.get("port", 3306),
+        user=db_config.get("user", "root"),
+        password=db_config.get("password", ""),
+        database=db_config.get("database", "video_to_action"),
+    )
+    print("✅ 使用 MySQL 数据库")
+else:
+    kb = KnowledgeBase()
+    print("✅ 使用 SQLite 数据库")
 
 # 任务管理器（替换原来的内存存储）
 data_dir = Path(config.get("output", {}).get("base_dir", "data"))
