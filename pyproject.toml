@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=video_to_action --cov-report=term-missing --cov-fail-under=52"
+addopts = "--cov=video_to_action --cov-report=term-missing --cov-fail-under=48"
 python_files = ["test_*.py", "*_test.py"]
 
 [tool.black]

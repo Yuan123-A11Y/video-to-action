@@ -125,25 +125,18 @@ class TestExtractorUnit:
 
     @patch("shutil.which", return_value="ffmpeg")
     @patch("subprocess.run")
-    def test_extract_audio_success(self, mock_run, mock_which):
-        """测试音频提取成功。"""
-        # 准备 mock 返回值
-        mock_run.return_value = MagicMock(returncode=0, stderr="")
+    def test_extract_audio_ffmpeg_fails(self, mock_run, mock_which):
+        """测试 ffmpeg 提取音频失败时抛出异常。"""
+        # 准备 mock 返回值（返回码非零）
+        mock_run.return_value = MagicMock(returncode=1, stderr="ffmpeg error")
 
         from video_to_action.extractor import Extractor
 
         config = {"transcription": {"model": "base"}}
         extractor = Extractor(config, Path("outputs"))
 
-        # 创建临时视频文件
-        video_path = Path("test.mp4")
-        video_path.touch()
-
-        try:
-            audio_path = extractor.extract_audio(video_path)
-            assert audio_path.exists() is False or "test.wav" in str(audio_path)
-        finally:
-            video_path.unlink(missing_ok=True)
+        with pytest.raises(RuntimeError, match="ffmpeg 提取音频失败"):
+            extractor.extract_audio(Path("test.mp4"))
 
     @patch("shutil.which", return_value=None)
     def test_extract_audio_no_ffmpeg(self, mock_which):
@@ -155,6 +148,39 @@ class TestExtractorUnit:
 
         with pytest.raises(EnvironmentError, match="未找到 ffmpeg"):
             extractor.extract_audio(Path("test.mp4"))
+
+
+class TestExtractorDeviceDetection:
+    """测试设备检测逻辑。"""
+
+    def test_detect_device_from_config(self):
+        """测试从配置文件读取设备设置。"""
+        from video_to_action.extractor import Extractor
+
+        config = {"transcription": {"model": "base", "device": "cuda"}}
+        extractor = Extractor(config, Path("outputs"))
+
+        assert extractor._detect_device() == "cuda"
+
+    @patch("ctranslate2.get_cuda_device_count", return_value=1)
+    def test_detect_device_auto_cuda(self, mock_cuda_count):
+        """测试自动检测到 CUDA。"""
+        from video_to_action.extractor import Extractor
+
+        config = {"transcription": {"model": "base", "device": "auto"}}
+        extractor = Extractor(config, Path("outputs"))
+
+        assert extractor._detect_device() == "cuda"
+
+    @patch("ctranslate2.get_cuda_device_count", side_effect=Exception("No CUDA"))
+    def test_detect_device_auto_fallback_to_cpu(self, mock_cuda_count):
+        """测试 CUDA 检测失败时回退到 CPU。"""
+        from video_to_action.extractor import Extractor
+
+        config = {"transcription": {"model": "base", "device": "auto"}}
+        extractor = Extractor(config, Path("outputs"))
+
+        assert extractor._detect_device() == "cpu"
 
 
 class TestExtractorIntegration:
