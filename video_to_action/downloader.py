@@ -36,18 +36,18 @@ def _extract_video_id_from_url(url: str) -> str | None:
 
     返回视频 ID 字符串，或 None（无法提取时）。
     """
-    # 方式 1：modal_id= 参数
-    m = re.search(r"modal_id=(\d+)", url)
+    # 方式 1：modal_id= 参数（至少 10 位数字）
+    m = re.search(r"modal_id=(\d{10,})", url)
     if m:
         return m.group(1)
 
-    # 方式 2：/video/ 路径
-    m = re.search(r"/video/(\d+)", url)
+    # 方式 2：/video/ 路径（至少 10 位数字）
+    m = re.search(r"/video/(\d{10,})", url)
     if m:
         return m.group(1)
 
     # 方式 3：URL 路径最后一段数字（至少 10 位，排除短链）
-    m = re.search(r"/([0-9]{10,}+)(?:/|\?|$)", url)
+    m = re.search(r"/([0-9]{10,})(?:/|\?|$)", url)
     if m:
         return m.group(1)
 
