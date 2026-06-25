@@ -1,0 +1,92 @@
+name: CI - 代码质量检查
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  code-quality:
+    name: 代码质量检查
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 缓存依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" || pip install -r requirements.txt
+          pip install black isort flake8 pytest pytest-cov
+
+      - name: 检查 Black 格式
+        run: |
+          echo "::group::Black 格式检查"
+          python -m black --check --line-length 120 video_to_action/ tools/douyin-downloader/ || (echo "::error::Black 格式检查失败，请运行: python -m black --line-length 120 ." && exit 1)
+          echo "::endgroup::"
+
+      - name: 检查 isort 导入排序
+        run: |
+          echo "::group::isort 导入排序检查"
+          python -m isort --check-only --profile black video_to_action/ tools/douyin-downloader/ || (echo "::error::isort 检查失败，请运行: python -m isort --profile black ." && exit 1)
+          echo "::endgroup::"
+
+      - name: 检查 Flake8 PEP 8 合规
+        run: |
+          echo "::group::Flake8 PEP 8 检查"
+          python -m flake8 video_to_action/ --max-line-length=120 --extend-ignore=E203,W503,E501 --exclude=.venv,__pycache__,*.pyc || (echo "::error::Flake8 检查失败" && exit 1)
+          echo "::endgroup::"
+
+      - name: 运行测试
+        run: |
+          echo "::group::运行测试"
+          python -m pytest tests/ -v --cov=video_to_action --cov-report=term-missing --cov-fail-under=52
+          echo "::endgroup::"
+
+  security-check:
+    name: 安全检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit
+
+      - name: 检查依赖漏洞
+        run: |
+          echo "::group::依赖漏洞检查"
+          safety check || true
+          echo "::endgroup::"
+
+      - name: 检查安全漏洞
+        run: |
+          echo "::group::Bandit 安全检查"
+          bandit -r video_to_action/ -f json -o bandit-report.json || true
+          bandit -r video_to_action/ || true
+          echo "::endgroup::"
