@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video-to-Action | 智能分析引擎 v2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Orbitron', 'sans-serif'],
+                        heading: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Share Tech Mono', 'monospace'],
+                    },
+                    colors: {
+                        'cyber-bg': '#0a0e17',
+                        'cyber-bg-light': '#111827',
+                        'neon-blue': '#00f0ff',
+                        'neon-purple': '#b400ff',
+                        'electric-blue': '#0080ff',
+                        'cyber-green': '#00ff88',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; margin:0; padding:0; }
+        
+        :root {
+            --neon-blue: #00f0ff;
+            --neon-purple: #b400ff;
+            --electric-blue: #0080ff;
+            --cyber-green: #00ff88;
+            --cyber-bg: #0a0e17;
+            --glow-blue: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);
+        }
+        
+        body {
+            font-family: 'Rajdhani', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background-color: var(--cyber-bg);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        
+        .grid-bg {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        #particles-canvas {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            box-shadow: 0 0 15px var(--neon-blue), 0 0 30px rgba(0, 240, 255, 0.3);
+            z-index: 1;
+            animation: scanDown 8s linear infinite;
+            pointer-events: none;
+            opacity: 0.15;
+        }
+        
+        @keyframes scanDown {
+            0% { top: -2px; }
+            100% { top: 100%; }
+        }
+        
+        .glass-card {
+            background: rgba(17, 24, 39, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.3), transparent);
+        }
+        
+        .neon-border {
+            transition: all 0.3s ease;
+        }
+        
+        .neon-border:hover {
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: var(--glow-blue);
+        }
+        
+        .tag-cyber {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--neon-blue);
+            background: rgba(0, 240, 255, 0.05);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 4px;
+        }
+        
+        .btn-cyber {
+            position: relative;
+            padding: 10px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--cyber-bg);
+            background: linear-gradient(135deg, var(--neon-blue), var(--electric-blue));
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+        
+        .btn-cyber:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+        }
+        
+        .btn-cyber:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .input-cyber {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #e2e8f0;
+            background: rgba(17, 24, 39, 0.6);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .input-cyber:focus {
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+        
+        .input-cyber::placeholder {
+            color: rgba(226, 232, 240, 0.3);
+        }
+        
+        .tab-cyber {
+            padding: 8px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(226, 232, 240, 0.5);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-cyber:hover {
+            color: rgba(226, 232, 240, 0.8);
+        }
+        
+        .tab-cyber.active {
+            color: var(--neon-blue);
+            border-bottom-color: var(--neon-blue);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+            opacity: 0;
+        }
+        
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        
+        .slide-up {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            animation: slideInRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .stat-card {
+            background: rgba(17, 24, 39, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 240, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: rgba(0, 240, 255, 0.15);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.05);
+        }
+        
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 240, 255, 0.2);
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 240, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <canvas id="particles-canvas"></canvas>
+    <div class="scanline"></div>
+    
+    <!-- Toast 通知 -->
+    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;"></div>
+    
+    <!-- 主容器 -->
+    <div class="relative z-10 min-h-screen p-4 md:p-8">
+        <!-- 顶部导航 -->
+        <nav class="glass-card mb-8 px-6 py-4 flex items-center justify-between" style="border-radius: 12px;">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-[#00f0ff] to-[#0080ff] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">
+                    <svg class="w-5 h-5 text-[#0a0e17]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black text-white tracking-wider" style="font-family: 'Orbitron', sans-serif; text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">VIDEO-TO-ACTION</h1>
+                    <p class="text-[10px] text-[rgba(226,232,240,0.4)] tracking-wider">INTELLIGENT ANALYSIS ENGINE v2.0</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div id="api-status" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-[rgba(0,255,136,0.1)] border border-[rgba(0,255,136,0.2)]">
+                    <div class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+                    <span class="text-[11px] font-medium text-[#00ff88]">API 已连接</span>
+                </div>
+            </div>
+        </nav>
+        
+        <!-- 标签页导航 -->
+        <div class="glass-card mb-8 px-6 py-3 flex items-center space-x-2" style="border-radius: 12px;">
+            <button class="tab-cyber active" data-tab="process" onclick="switchTab('process')">处理视频</button>
+            <button class="tab-cyber" data-tab="videos" onclick="switchTab('videos')">视频库</button>
+            <button class="tab-cyber" data-tab="tools" onclick="switchTab('tools')">工具库</button>
+            <button class="tab-cyber" data-tab="stats" onclick="switchTab('stats')">统计</button>
+        </div>
+        
+        <!-- 内容区域 -->
+        <div id="content-area">
+            <!-- 处理视频标签页 -->
+            <div id="tab-process" class="tab-content">
+                <div class="max-w-3xl mx-auto">
+                    <div class="glass-card p-8 md:p-10 slide-up" style="border-radius: 16px;">
+                        <h2 class="text-2xl font-bold text-white mb-2" style="font-family: 'Rajdhani', sans-serif; text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);">智能视频分析</h2>
+                        <p class="text-sm text-[rgba(226,232,240,0.5)] mb-8">输入视频链接，AI 将自动提取工具和工作流信息</p>
+                        
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-xs font-bold text-[rgba(226,232,240,0.6)] tracking-wider mb-2">视频链接</label>
+                                <input type="text" id="video-url" class="input-cyber" placeholder="https://www.douyin.com/video/..." />
+                            </div>
+                            
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2 cursor-pointer">
+                                    <input type="checkbox" id="save-to-kb" checked class="w-4 h-4 rounded border-[rgba(0,240,255,0.2)] bg-[rgba(0,240,255,0.05)] text-[#00f0ff] focus:ring-[#00f0ff]" />
+                                    <span class="text-sm text-[rgba(226,232,240,0.7)]">保存到知识库</span>
+                                </label>
+                            </div>
+                            
+                            <button id="process-btn" class="btn-cyber w-full py-3 text-sm font-bold" onclick="processVideo()">
+                                开始处理
+                            </button>
+                            
+                            <!-- 处理状态 -->
+                            <div id="processing-status" class="hidden">
+                                <div class="glass-card p-4" style="border-radius: 8px; background: rgba(0, 240, 255, 0.02);">
+                                    <h3 class="text-xs font-bold text-[rgba(226,232,240,0.6)] tracking-wider mb-3">处理进度</h3>
+                                    <div id="progress-steps" class="space-y-2"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- 处理结果 -->
+                            <div id="processing-result" class="hidden">
+                                <div class="glass-card p-4" style="border-radius: 8px; background: rgba(0, 255, 136, 0.02);">
+                                    <h3 class="text-xs font-bold text-[rgba(226,232,240,0.6)] tracking-wider mb-3">处理结果</h3>
+                                    <pre id="result-content" class="text-xs text-[rgba(226,232,240,0.7)] overflow-x-auto whitespace-pre-wrap"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 视频库标签页 -->
+            <div id="tab-videos" class="tab-content hidden">
+                <div class="mb-6 flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-white">视频库</h2>
+                    <div class="flex items-center space-x-3">
+                        <input type="text" id="video-search" class="input-cyber w-64" placeholder="搜索视频..." oninput="filterVideos()" />
+                        <span id="videos-count-text" class="text-sm text-[rgba(226,232,240,0.5)]">加载中...</span>
+                    </div>
+                </div>
+                <div id="videos-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 视频卡片将在这里动态生成 -->
+                </div>
+            </div>
+            
+            <!-- 工具库标签页 -->
+            <div id="tab-tools" class="tab-content hidden">
+                <div class="mb-6 flex items-center justify-between">
+                    <h2 class="text-xl font-bold text-white">工具库</h2>
+                    <div class="flex items-center space-x-3">
+                        <input type="text" id="tool-search" class="input-cyber w-64" placeholder="搜索工具..." oninput="filterTools()" />
+                        <span id="tools-count-text" class="text-sm text-[rgba(226,232,240,0.5)]">加载中...</span>
+                    </div>
+                </div>
+                <div id="tools-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 工具卡片将在这里动态生成 -->
+                </div>
+            </div>
+            
+            <!-- 统计标签页 -->
+            <div id="tab-stats" class="tab-content hidden">
+                <div id="stats-content" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- 统计数据将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '';  // 相对路径，与前端同域
+        let allVideos = [];
+        let allTools = [];
+        let currentVideoPage = 1;
+        let currentToolPage = 1;
+        const pageSize = 12;
+        
+        // ==================== 初始化 ====================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAPIHealth();
+            loadStats();
+        });
+        
+        async function checkAPIHealth() {
+            try {
+                await axios.get(`${API_BASE}/`);
+                document.getElementById('api-status').innerHTML = `
+                    <div class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+                    <span class="text-[11px] font-medium text-[#00ff88]">API 已连接</span>`;
+            } catch (error) {
+                document.getElementById('api-status').innerHTML = `
+                    <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                    <span class="text-[11px] font-medium text-red-400">API 未连接</span>`;
+                showToast('无法连接到 API 服务器', 'error');
+            }
+        }
+        
+        // ==================== 标签切换 ====================
+        
+        function switchTab(tabName) {
+            // 更新标签按钮样式
+            document.querySelectorAll('.tab-cyber').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === tabName) tab.classList.add('active');
+            });
+            
+            // 显示对应内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            
+            // 加载数据
+            if (tabName === 'videos') loadVideos();
+            if (tabName === 'tools') loadTools();
+            if (tabName === 'stats') loadStats();
+        }
+        
+        // ==================== 视频处理 ====================
+        
+        async function processVideo() {
+            const url = document.getElementById('video-url').value.trim();
+            if (!url) {
+                showToast('请输入视频链接', 'warning');
+                return;
+            }
+            
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.textContent = '处理中...';
+            
+            const statusDiv = document.getElementById('processing-status');
+            statusDiv.classList.remove('hidden');
+            document.getElementById('progress-steps').innerHTML = `
+                <div class="flex items-center space-x-3 text-sm">
+                    <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
+                    <span class="text-[#00f0ff]">正在提交任务...</span>
+                </div>`;
+            
+            try {
+                const response = await axios.post(`${API_BASE}/process`, {
+                    url: url,
+                    level: 'auto',
+                    save_to_kb: document.getElementById('save-to-kb').checked,
+                });
+                
+                const taskId = response.data.data.task_id;
+                document.getElementById('progress-steps').innerHTML = `
+                    <div class="flex items-center space-x-3 text-sm text-[#00ff88]">
+                        <span class="text-lg">✓</span>
+                        <span>任务已提交 <span class="text-xs bg-[rgba(0,240,255,0.1)] px-2 py-0.5 rounded">#${taskId}</span></span>
+                    </div>
+                    <div id="step-processing" class="flex items-center space-x-3 text-sm text-[#00f0ff]">
+                        <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
+                        <span>正在处理...</span>
+                    </div>`;
+                btn.textContent = '处理中';
+                pollTaskStatus(taskId);
+            } catch (error) {
+                document.getElementById('progress-steps').innerHTML = `
+                    <div class="flex items-center space-x-3 text-sm text-red-400">
+                        <span class="text-lg">✗</span>
+                        <span>提交失败：${error.response?.data?.detail || error.message}</span>
+                    </div>`;
+                btn.disabled = false;
+                btn.textContent = '开始处理';
+                showToast('任务提交失败', 'error');
+            }
+        }
+        
+        async function pollTaskStatus(taskId) {
+            try {
+                const response = await axios.get(`${API_BASE}/tasks/${taskId}`);
+                const task = response.data;
+                
+                if (task.status === 'processing') {
+                    setTimeout(() => pollTaskStatus(taskId), 2000);
+                } else if (task.status === 'completed') {
+                    document.getElementById('step-processing').innerHTML = `
+                        <span class="text-[#00ff88] text-lg">✓</span>
+                        <span class="text-[#00ff88]">处理完成</span>`;
+                    const resultDiv = document.getElementById('processing-result');
+                    resultDiv.classList.remove('hidden');
+                    document.getElementById('result-content').textContent = JSON.stringify(task.result, null, 2);
+                    document.getElementById('process-btn').disabled = false;
+                    document.getElementById('process-btn').textContent = '开始处理';
+                    showToast('视频处理完成', 'success');
+                } else if (task.status === 'failed') {
+                    document.getElementById('step-processing').innerHTML = `
+                        <span class="text-red-400 text-lg">✗</span>
+                        <span class="text-red-400">处理失败：${task.result?.error || '未知错误'}</span>`;
+                    document.getElementById('process-btn').disabled = false;
+                    document.getElementById('process-btn').textContent = '开始处理';
+                    showToast('视频处理失败', 'error');
+                }
+            } catch (error) {
+                setTimeout(() => pollTaskStatus(taskId), 3000);
+            }
+        }
+        
+        // ==================== 视频库 ====================
+        
+        async function loadVideos(page = 1) {
+            const listDiv = document.getElementById('videos-list');
+            listDiv.innerHTML = showSkeleton(6);
+            try {
+                const response = await axios.get(`${API_BASE}/videos?limit=${pageSize}&offset=${(page - 1) * pageSize}`);
+                const videos = response.data.videos;
+                const total = response.data.total;
+                currentVideoPage = page;
+                allVideos = videos;  // 用于搜索过滤
+                document.getElementById('videos-count-text').textContent = `共 ${total} 个视频`;
+                renderVideos(videos, total);
+            } catch (error) {
+                listDiv.innerHTML = showEmptyState('error');
+                showToast('加载视频库失败', 'error');
+            }
+        }
+        
+        function renderVideos(videos, total = 0) {
+            const listDiv = document.getElementById('videos-list');
+            if (videos.length === 0) {
+                listDiv.innerHTML = showEmptyState('video');
+                return;
+            }
+            listDiv.innerHTML = videos.map((v, i) => `
+                <div class="glass-card p-6 fade-in neon-border" style="animation-delay: ${i * 50}ms">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="tag-cyber">${v.platform}</span>
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)]">${new Date(v.created_at).toLocaleDateString('zh-CN')}</span>
+                    </div>
+                    <h3 class="font-bold text-white text-sm mb-2 leading-snug cursor-pointer hover:text-[#00f0ff] transition-colors" onclick="viewVideo(${v.id})">${v.theme || '未知主题'}</h3>
+                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${v.summary || '无摘要'}</p>
+                    <div class="mt-4 pt-4 border-t border-[rgba(0,240,255,0.05)] flex items-center justify-between">
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] cursor-pointer hover:text-[#00f0ff]" onclick="viewVideo(${v.id})">点击查看详情</span>
+                        <button onclick="deleteVideo(${v.id})" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded hover:bg-red-400/10" title="删除视频">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0l6.75-6.75M4.5 12l6.75 6.75"/></svg>
+                        </button>
+                    </div>
+                </div>`).join('') + renderPagination(currentVideoPage, total, pageSize, 'Videos');
+        }
+        
+        function renderPagination(currentPage, total, pageSize, type) {
+            const totalPages = Math.ceil(total / pageSize);
+            if (totalPages <= 1) return '';
+            
+            let pages = [];
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    if (pages.length > 0 && i > pages[pages.length - 1] + 1) {
+                        pages.push('...');
+                    }
+                    pages.push(i);
+                }
+            }
+            
+            const typeCapitalized = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            
+            return `
+                <div class="col-span-full flex items-center justify-center space-x-2 mt-6">
+                    <button onclick="load${typeCapitalized}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1.5 text-xs rounded bg-[rgba(0,240,255,0.05)] border border-[rgba(0,240,255,0.1)] text-[rgba(226,232,240,0.7)] hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all disabled:opacity-30 disabled:cursor-not-allowed">上一页</button>
+                    ${pages.map(p => p === '...' ? `<span class="text-[rgba(226,232,240,0.3)] text-xs">...</span>` : `<button onclick="load${typeCapitalized}(${p})" class="w-8 h-8 text-xs rounded ${p === currentPage ? 'bg-[#00f0ff] text-[#0a0e17] font-bold' : 'bg-[rgba(0,240,255,0.05)] border border-[rgba(0,240,255,0.1)] text-[rgba(226,232,240,0.7)] hover:border-[#00f0ff]'} transition-all">${p}</button>`).join('')}
+                    <button onclick="load${typeCapitalized}(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-3 py-1.5 text-xs rounded bg-[rgba(0,240,255,0.05)] border border-[rgba(0,240,255,0.1)] text-[rgba(226,232,240,0.7)] hover:border-[#00f0ff] hover:text-[#00f0ff] transition-all disabled:opacity-30 disabled:cursor-not-allowed">下一页</button>
+                </div>`;
+        }
+        
+        async function deleteVideo(videoId) {
+            if (!confirm('确定要删除这个视频吗？此操作不可撤销。')) return;
+            
+            try {
+                await axios.delete(`${API_BASE}/videos/${videoId}`);
+                showToast('视频已删除', 'success');
+                loadVideos(currentVideoPage);
+            } catch (error) {
+                showToast('删除视频失败', 'error');
+            }
+        }
+        
+        async function viewVideo(videoId) {
+            try {
+                const response = await axios.get(`${API_BASE}/videos/${videoId}`);
+                const v = response.data;
+                const tools = v.tools || [];
+                
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
+                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
+                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
+                            <h2 class="text-xl font-bold text-white" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">视频详情</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#00f0ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,240,255,0.05)]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div>
+                                <span class="tag-cyber">${v.platform}</span>
+                                <h3 class="text-2xl font-bold text-white mt-3">${v.theme || '未知主题'}</h3>
+                                <p class="text-sm text-[rgba(226,232,240,0.5)] mt-1.5">${new Date(v.created_at).toLocaleString('zh-CN')}</p>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2">摘要</h4>
+                                <p class="text-sm text-[rgba(226,232,240,0.8)] leading-relaxed">${v.summary || '无'}</p>
+                            </div>
+                            ${tools.length > 0 ? `
+                            <div>
+                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2.5">涉及工具</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${tools.map(t => `<span class="tag-cyber">${t.name}</span>`).join('')}
+                                </div>
+                            </div>` : ''}
+                            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-[rgba(0,240,255,0.05)]">
+                                <button onclick="deleteVideo(${v.id}); this.closest('.fixed').remove();" class="px-4 py-2 text-xs font-bold text-red-400 bg-red-400/10 rounded hover:bg-red-400/20 transition-all">删除视频</button>
+                                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-xs font-bold text-[#00f0ff] bg-[rgba(0,240,255,0.05)] rounded hover:bg-[rgba(0,240,255,0.1)] transition-all">关闭</button>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+            } catch (error) {
+                showToast('加载视频详情失败', 'error');
+            }
+        }
+        
+        function filterVideos() {
+            const query = document.getElementById('video-search').value.toLowerCase();
+            const filtered = allVideos.filter(v =>
+                (v.theme || '').toLowerCase().includes(query) ||
+                (v.platform || '').toLowerCase().includes(query) ||
+                (v.summary || '').toLowerCase().includes(query)
+            );
+            renderVideos(filtered, filtered.length);
+        }
+        
+        // ==================== 工具库 ====================
+        
+        async function loadTools(page = 1) {
+            const listDiv = document.getElementById('tools-list');
+            listDiv.innerHTML = showSkeleton(6);
+            try {
+                const response = await axios.get(`${API_BASE}/tools?limit=${pageSize}&offset=${(page - 1) * pageSize}`);
+                const tools = response.data.tools;
+                const total = response.data.total;
+                currentToolPage = page;
+                allTools = tools;  // 用于搜索过滤
+                document.getElementById('tools-count-text').textContent = `共 ${total} 个工具`;
+                renderTools(tools, total);
+            } catch (error) {
+                listDiv.innerHTML = showEmptyState('error');
+                showToast('加载工具库失败', 'error');
+            }
+        }
+        
+        function renderTools(tools, total = 0) {
+            const listDiv = document.getElementById('tools-list');
+            if (tools.length === 0) {
+                listDiv.innerHTML = showEmptyState('tool');
+                return;
+            }
+            listDiv.innerHTML = tools.map((t, i) => `
+                <div class="glass-card p-6 fade-in neon-border" style="animation-delay: ${i * 50}ms">
+                    <div class="flex items-start justify-between mb-3">
+                        <span class="tag-cyber" style="border-color: rgba(180, 0, 255, 0.3); color: #b400ff;">${t.category || '工具'}</span>
+                        ${t.is_paid ? '<span class="tag-cyber" style="border-color: rgba(255, 165, 0, 0.3); color: orange;">付费</span>' : ''}
+                    </div>
+                    <h3 class="font-bold text-white text-sm mb-2 leading-snug cursor-pointer hover:text-[#b400ff] transition-colors" onclick="viewTool(${t.id})">${t.name}</h3>
+                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${t.purpose || '无描述'}</p>
+                    <div class="mt-4 pt-4 border-t border-[rgba(180,0,255,0.05)] flex items-center justify-between">
+                        <span class="text-[10px] text-[rgba(226,232,240,0.3)] cursor-pointer hover:text-[#b400ff]" onclick="viewTool(${t.id})">查看详情</span>
+                        <button onclick="deleteTool(${t.id})" class="text-red-400 hover:text-red-300 transition-colors p-1.5 rounded hover:bg-red-400/10" title="删除工具">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15m0 0l6.75-6.75M4.5 12l6.75 6.75"/></svg>
+                        </button>
+                    </div>
+                </div>`).join('') + renderPagination(currentToolPage, total, pageSize, 'Tools');
+        }
+        
+        async function deleteTool(toolId) {
+            if (!confirm('确定要删除这个工具吗？此操作不可撤销。')) return;
+            
+            try {
+                await axios.delete(`${API_BASE}/tools/${toolId}`);
+                showToast('工具已删除', 'success');
+                loadTools(currentToolPage);
+            } catch (error) {
+                showToast('删除工具失败', 'error');
+            }
+        }
+        
+        async function viewTool(toolId) {
+            try {
+                const response = await axios.get(`${API_BASE}/tools/${toolId}`);
+                const t = response.data;
+                const videos = t.videos || [];
+                
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
+                modal.innerHTML = `
+                    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
+                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
+                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(180,0,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
+                            <h2 class="text-xl font-bold text-white" style="text-shadow: 0 0 10px rgba(180, 0, 255, 0.3);">工具详情</h2>
+                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#b400ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(180,0,255,0.05)]">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="p-8 space-y-6">
+                            <div>
+                                <h3 class="text-2xl font-bold text-white">${t.name}</h3>
+                                <div class="flex items-center space-x-2 mt-2">
+                                    <span class="tag-cyber">${t.category || '工具'}</span>
+                                    ${t.is_paid ? '<span class="tag-cyber" style="border-color: rgba(255, 165, 0, 0.3); color: orange;">付费</span>' : ''}
+                                    ${t.needs_credential ? '<span class="tag-cyber" style="border-color: rgba(255, 0, 0, 0.3); color: red;">需要凭证</span>' : ''}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2">用途</h4>
+                                <p class="text-sm text-[rgba(226,232,240,0.8)] leading-relaxed">${t.purpose || '无'}</p>
+                            </div>
+                            ${t.install_commands && t.install_commands.length > 0 ? `
+                            <div>
+                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2">安装命令</h4>
+                                ${t.install_commands.map(cmd => `<code class="block text-xs bg-[rgba(0,0,0,0.3)] p-2 rounded mb-1 font-mono">${cmd}</code>`).join('')}
+                            </div>` : ''}
+                            ${videos.length > 0 ? `
+                            <div>
+                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2.5">相关视频</h4>
+                                <div class="space-y-2">
+                                    ${videos.map(v => `<div class="text-sm text-[rgba(226,232,240,0.7)] cursor-pointer hover:text-[#00f0ff]" onclick="viewVideo(${v.id}); this.closest('.fixed').remove();">${v.theme || '未知主题'}</div>`).join('')}
+                                </div>
+                            </div>` : ''}
+                            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-[rgba(180,0,255,0.05)]">
+                                <button onclick="deleteTool(${t.id}); this.closest('.fixed').remove();" class="px-4 py-2 text-xs font-bold text-red-400 bg-red-400/10 rounded hover:bg-red-400/20 transition-all">删除工具</button>
+                                <button onclick="this.closest('.fixed').remove()" class="px-4 py-2 text-xs font-bold text-[#b400ff] bg-[rgba(180,0,255,0.05)] rounded hover:bg-[rgba(180,0,255,0.1)] transition-all">关闭</button>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+            } catch (error) {
+                showToast('加载工具详情失败', 'error');
+            }
+        }
+        
+        function filterTools() {
+            const query = document.getElementById('tool-search').value.toLowerCase();
+            const filtered = allTools.filter(t =>
+                (t.name || '').toLowerCase().includes(query) ||
+                (t.category || '').toLowerCase().includes(query) ||
+                (t.purpose || '').toLowerCase().includes(query)
+            );
+            renderTools(filtered, filtered.length);
+        }
+        
+        // ==================== 统计 ====================
+        
+        async function loadStats() {
+            const contentDiv = document.getElementById('stats-content');
+            contentDiv.innerHTML = showSkeleton(3);
+            try {
+                const response = await axios.get(`${API_BASE}/stats`);
+                const stats = response.data;
+                const platformData = stats.platform_stats || [];
+                
+                let platformHtml = '';
+                if (platformData.length > 0) {
+                    const maxCount = Math.max(...platformData.map(p => p.count));
+                    platformHtml = platformData.map(p => `
+                        <div class="flex items-center space-x-3">
+                            <span class="text-sm text-[rgba(226,232,240,0.7)] w-16 truncate">${p.platform}</span>
+                            <div class="flex-1 bg-[rgba(0,0,0,0.4)] rounded-full h-2 overflow-hidden">
+                                <div class="bg-gradient-to-r from-[#0080ff] to-[#00f0ff] h-full rounded-full transition-all duration-500" style="width: ${(p.count / maxCount * 100).toFixed(0)}%; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);"></div>
+                            </div>
+                            <span class="text-sm font-bold text-[#00f0ff] w-8 text-right">${p.count}</span>
+                        </div>`).join('');
+                } else {
+                    platformHtml = '<div class="text-[rgba(226,232,240,0.3)] text-sm py-2">暂无数据</div>';
+                }
+                
+                contentDiv.innerHTML = `
+                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.1s;">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider">视频数量</span>
+                            <div class="w-10 h-10 bg-[rgba(0,128,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(0, 128, 255, 0.3);">
+                                <svg class="w-5 h-5 text-[#0080ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                            </div>
+                        </div>
+                        <p class="text-5xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">${stats.video_count}</p>
+                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2">已处理视频总数</p>
+                    </div>
+                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.2s;">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider">工具数量</span>
+                            <div class="w-10 h-10 bg-[rgba(180,0,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(180, 0, 255, 0.3);">
+                                <svg class="w-5 h-5 text-[#b400ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
+                            </div>
+                        </div>
+                        <p class="text-5xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(180, 0, 255, 0.3);">${stats.tool_count}</p>
+                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2">已识别工具总数</p>
+                    </div>
+                    <div class="stat-card p-8 md:col-span-3 lg:col-span-1 fade-in" style="animation-delay: 0.3s;">
+                        <h3 class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider mb-6">平台分布</h3>
+                        <div class="space-y-4">${platformHtml}</div>
+                    </div>`;
+            } catch (error) {
+                contentDiv.innerHTML = `<div class="col-span-full text-red-400 text-sm py-4">加载失败：${error.message}</div>`;
+                showToast('加载统计数据失败', 'error');
+            }
+        }
+        
+        // ==================== UI 辅助函数 ====================
+        
+        function showSkeleton(count) {
+            return Array(count).fill(0).map(() => `
+                <div class="glass-card p-6">
+                    <div class="h-5 bg-[rgba(0,240,255,0.1)] rounded w-3/4 mb-4 animate-pulse"></div>
+                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-1/2 mb-2 animate-pulse"></div>
+                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-full animate-pulse"></div>
+                </div>`).join('');
+        }
+        
+        function showEmptyState(type) {
+            const labels = {
+                video: '暂无视频',
+                tool: '暂无工具',
+                search: '未找到匹配结果',
+                error: '加载失败',
+            };
+            const descriptions = {
+                video: '在处理页面添加视频以开始构建知识库',
+                tool: '处理视频后自动提取工具信息',
+                search: '尝试使用不同的关键词搜索',
+                error: '请检查网络连接后重试',
+            };
+            return `
+                <div class="col-span-full text-center py-20">
+                    <p class="text-2xl font-bold text-[rgba(226,232,240,0.2)]">${labels[type]}</p>
+                    <p class="text-[rgba(226,232,240,0.3)] text-sm mt-2">${descriptions[type]}</p>
+                </div>`;
+        }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            
+            const colors = {
+                success: 'rgba(0, 255, 136, 0.2)',
+                error: 'rgba(255, 0, 0, 0.2)',
+                warning: 'rgba(255, 165, 0, 0.2)',
+                info: 'rgba(0, 240, 255, 0.2)',
+            };
+            
+            const borderColors = {
+                success: 'rgba(0, 255, 136, 0.4)',
+                error: 'rgba(255, 0, 0, 0.4)',
+                warning: 'rgba(255, 165, 0, 0.4)',
+                info: 'rgba(0, 240, 255, 0.4)',
+            };
+            
+            toast.style.background = colors[type] || colors.info;
+            toast.style.borderColor = borderColors[type] || borderColors.info;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // ==================== 粒子背景 ====================
+        
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        const particles = [];
+        const particleCount = 30;
+        
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                radius: Math.random() * 2 + 0.5,
+                opacity: Math.random() * 0.4 + 0.1,
+            });
+        }
+        
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 240, 255, ${p.opacity})`;
+                ctx.fill();
+            });
+            
+            // 绘制连线
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 120) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(0, 240, 255, ${0.08 * (1 - distance / 120)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            requestAnimationFrame(animateParticles);
+        }
+        
+        animateParticles();
+    </script>
+</body>
+</html>
