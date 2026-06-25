@@ -76,8 +76,9 @@ def parse_url_type(url: str) -> Optional[str]:
     if host.startswith("live.douyin.com"):
         return "live"
 
-    # /user/ 页面但通过 modal_id 参数指定了具体视频，视为单视频链接
-    if "/user/" in path and "modal_id=" in query:
+    # 任一页面通过 modal_id 参数指定了具体视频，视为单视频链接
+    # 支持格式：/user/XXX?modal_id=YYY, /jingxuan/course?modal_id=YYY 等
+    if "modal_id=" in query:
         return "video"
 
     if "/video/" in path:

@@ -65,7 +65,15 @@ class Executor:
                 "command": command,
             }
 
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        # 使用 GBK 编码读取输出（兼容中文 Windows）
+        # 如果解码失败，使用 UTF-8 并忽略错误
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            encoding="utf-8",
+            errors="ignore"
+        )
         return {
             "success": result.returncode == 0,
             "stdout": result.stdout,

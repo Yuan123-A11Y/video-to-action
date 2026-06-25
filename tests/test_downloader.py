@@ -210,9 +210,10 @@ def test_download_video_douyin_uses_douyin_downloader():
     config = {"download": {"fallback": "yt-dlp"}, "douyin_downloader": {}}
     test_url = "https://v.douyin.com/test123/"
 
-    with patch.object(DouyinDownloader, "download") as mock_dy_download, patch.object(
-        YtDlpDownloader, "_check_dependency"
-    ), patch.object(YtDlpDownloader, "download") as mock_yt_download:
+    with patch("video_to_action.downloader._check_existing_download", return_value=None), \
+         patch.object(DouyinDownloader, "download") as mock_dy_download, \
+         patch.object(YtDlpDownloader, "_check_dependency"), \
+         patch.object(YtDlpDownloader, "download") as mock_yt_download:
         mock_dy_download.return_value = {
             "success": True,
             "platform": "douyin",
@@ -235,9 +236,10 @@ def test_download_video_douyin_falls_back_to_yt_dlp():
     config = {"download": {"fallback": "yt-dlp"}, "douyin_downloader": {}}
     test_url = "https://v.douyin.com/test123/"
 
-    with patch.object(DouyinDownloader, "download") as mock_dy_download, patch.object(
-        YtDlpDownloader, "_check_dependency"
-    ), patch.object(YtDlpDownloader, "download") as mock_yt_download:
+    with patch("video_to_action.downloader._check_existing_download", return_value=None), \
+         patch.object(DouyinDownloader, "download") as mock_dy_download, \
+         patch.object(YtDlpDownloader, "_check_dependency"), \
+         patch.object(YtDlpDownloader, "download") as mock_yt_download:
         mock_dy_download.return_value = {
             "success": False,
             "platform": "douyin",
