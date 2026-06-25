@@ -407,9 +407,7 @@ class CryptoUtility:
         base64_indices = [int(binary_string[i : i + 6], 2) for i in range(0, len(binary_string), 6)]
 
         # 根据自定义字符表生成输出字符串
-        output_string = "".join(
-            [self.base64_alphabet[selected_alphabet][index] for index in base64_indices]
-        )
+        output_string = "".join([self.base64_alphabet[selected_alphabet][index] for index in base64_indices])
 
         # 添加等号填充，使符合 Base64 编码规范
         output_string += "=" * (padding_length // 2)
@@ -661,9 +659,7 @@ class ABogus:
         )  # 自定义ua，为空则设置一个默认ua
 
         self.browser_fp = (
-            fp
-            if fp is not None and fp != ""
-            else BrowserFingerprintGenerator.generate_fingerprint("Edge")
+            fp if fp is not None and fp != "" else BrowserFingerprintGenerator.generate_fingerprint("Edge")
         )  # 自定义浏览器指纹，为空则生成Edge指纹
 
         # fmt: off
@@ -729,9 +725,7 @@ class ABogus:
         array2 = self.crypto_utility.params_to_array(self.crypto_utility.params_to_array(body))
         array3 = self.crypto_utility.params_to_array(
             self.crypto_utility.base64_encode(
-                StringProcessor.to_ord_str(
-                    self.crypto_utility.rc4_encrypt(self.ua_key, self.user_agent)
-                ),
+                StringProcessor.to_ord_str(self.crypto_utility.rc4_encrypt(self.ua_key, self.user_agent)),
                 1,
             ),
             add_salt=False,
@@ -819,10 +813,7 @@ class ABogus:
         sorted_values.extend(edge_fp_array)
         sorted_values.append(ab_xor)
 
-        abogus_bytes_str = (
-            StringProcessor.generate_random_bytes()
-            + self.crypto_utility.transform_bytes(sorted_values)
-        )
+        abogus_bytes_str = StringProcessor.generate_random_bytes() + self.crypto_utility.transform_bytes(sorted_values)
 
         abogus = self.crypto_utility.abogus_encode(abogus_bytes_str, 0)
         params = "%s&a_bogus=%s" % (params, abogus)

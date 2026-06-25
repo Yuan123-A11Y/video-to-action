@@ -4,7 +4,6 @@ import json
 from typing import Any, Dict, List
 
 import pytest
-
 from core.comments_collector import CommentsCollector
 from storage.metadata_handler import MetadataHandler
 

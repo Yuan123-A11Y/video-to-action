@@ -2,7 +2,6 @@ import asyncio
 import time
 
 import pytest
-
 from control.rate_limiter import RateLimiter
 
 

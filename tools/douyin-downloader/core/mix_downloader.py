@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from core.downloader_base import BaseDownloader, DownloadResult
 from core.user_modes.base_strategy import BaseUserModeStrategy
+
 from utils.logger import setup_logger
 
 logger = setup_logger("MixDownloader")
@@ -26,9 +27,7 @@ class MixDownloader(BaseDownloader):
 
         mix_detail = await self._get_mix_detail(str(mix_id))
         author_name = (
-            (mix_detail.get("author") or {}).get("nickname")
-            if isinstance(mix_detail, dict)
-            else None
+            (mix_detail.get("author") or {}).get("nickname") if isinstance(mix_detail, dict) else None
         ) or "mix"
 
         async def _process_aweme(item: Dict[str, Any]):

@@ -120,9 +120,7 @@ class JobManager:
         if len(self._jobs) < self.max_jobs:
             return
         terminal_jobs = [
-            (j.finished_monotonic or 0.0, jid)
-            for jid, j in self._jobs.items()
-            if j.status in JobStatus.TERMINAL
+            (j.finished_monotonic or 0.0, jid) for jid, j in self._jobs.items() if j.status in JobStatus.TERMINAL
         ]
         terminal_jobs.sort(key=lambda pair: pair[0])
         overflow = len(self._jobs) - self.max_jobs + 1  # +1 是为新 job 腾位

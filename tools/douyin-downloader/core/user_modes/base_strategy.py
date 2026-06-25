@@ -4,6 +4,7 @@ from abc import ABC
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from core.downloader_base import DownloadResult
+
 from utils.logger import setup_logger
 
 if TYPE_CHECKING:
@@ -78,9 +79,7 @@ class BaseUserModeStrategy(ABC):
             return items
         return [item for item in items if detector(item) in selected]
 
-    async def _collect_paged_aweme(
-        self, sec_uid: str, user_info: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    async def _collect_paged_aweme(self, sec_uid: str, user_info: Dict[str, Any]) -> List[Dict[str, Any]]:
         fetcher = getattr(self.downloader.api_client, self.api_method_name, None)
         if not callable(fetcher):
             logger.warning(
@@ -96,12 +95,8 @@ class BaseUserModeStrategy(ABC):
 
         number_limit = int(self.downloader.config.get("number", {}).get(self.mode_name, 0) or 0)
         media_filter_enabled = self._media_type_filter_enabled()
-        increase_enabled = bool(
-            self.downloader.config.get("increase", {}).get(self.mode_name, False)
-        )
-        stop_at_downloaded_aweme = (
-            increase_enabled and self.mode_name == "like" and self.downloader.database
-        )
+        increase_enabled = bool(self.downloader.config.get("increase", {}).get(self.mode_name, False))
+        stop_at_downloaded_aweme = increase_enabled and self.mode_name == "like" and self.downloader.database
         latest_time = None
         if increase_enabled and self.downloader.database and not stop_at_downloaded_aweme:
             latest_time = await self.downloader.database.get_latest_aweme_time(user_info.get("uid"))

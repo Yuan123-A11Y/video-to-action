@@ -38,7 +38,6 @@ from typing import Any, Dict, List, Optional
 from hypothesis import HealthCheck, given
 from hypothesis import settings as hyp_settings
 from hypothesis import strategies as st
-
 from storage.database import Database
 
 # ---------------------------------------------------------------------------
@@ -182,9 +181,7 @@ def _latest_nonempty_names_for(
     candidates = [
         (_absolute_download_time(r, now_ref), r["author_name"])
         for r in rows
-        if r["author_sec_uid"] == sec_uid
-        and r["author_name"] is not None
-        and r["author_name"] != ""
+        if r["author_sec_uid"] == sec_uid and r["author_name"] is not None and r["author_name"] != ""
     ]
     if not candidates:
         return None
@@ -207,9 +204,7 @@ def _assert_invariants(ctx: Dict[str, Any], *, days: int, limit: int) -> None:
 
     # Invariant 4: sorted by (-download_count, sec_uid).
     sort_keys = [(-a["download_count"], a["sec_uid"]) for a in result]
-    assert sort_keys == sorted(sort_keys), (
-        f"result is not sorted by (-download_count, sec_uid): {sort_keys}"
-    )
+    assert sort_keys == sorted(sort_keys), f"result is not sorted by (-download_count, sec_uid): {sort_keys}"
 
     # Bound the db method's internal cutoff. The method uses
     # ``datetime.now()`` once inside; that ``now`` is in
@@ -227,9 +222,7 @@ def _assert_invariants(ctx: Dict[str, Any], *, days: int, limit: int) -> None:
         assert a["sec_uid"] != "", "sec_uid is empty string in result"
 
         # Invariant 3: download_count >= 1.
-        assert a["download_count"] >= 1, (
-            f"download_count {a['download_count']} < 1 for sec_uid {a['sec_uid']}"
-        )
+        assert a["download_count"] >= 1, f"download_count {a['download_count']} < 1 for sec_uid {a['sec_uid']}"
 
         sec_uid = a["sec_uid"]
         matching_rows = [r for r in rows if r["author_sec_uid"] == sec_uid]
@@ -237,11 +230,7 @@ def _assert_invariants(ctx: Dict[str, Any], *, days: int, limit: int) -> None:
         # Invariant 6: at least one row for this sec_uid has
         # ``create_time >= cutoff_db``, which is necessarily
         # ``>= necessary_cutoff_lower_bound``.
-        in_window_rows = [
-            r
-            for r in matching_rows
-            if _absolute_create_time(r, now_ref) >= necessary_cutoff_lower_bound
-        ]
+        in_window_rows = [r for r in matching_rows if _absolute_create_time(r, now_ref) >= necessary_cutoff_lower_bound]
         assert in_window_rows, (
             f"sec_uid {sec_uid!r} appeared in result but has no row with "
             f"create_time >= {necessary_cutoff_lower_bound} "
@@ -258,8 +247,7 @@ def _assert_invariants(ctx: Dict[str, Any], *, days: int, limit: int) -> None:
             )
         else:
             assert a["author_name"] in latest_names, (
-                f"sec_uid {sec_uid!r} author_name {a['author_name']!r} not "
-                f"in tied latest set {latest_names!r}"
+                f"sec_uid {sec_uid!r} author_name {a['author_name']!r} not " f"in tied latest set {latest_names!r}"
             )
 
 

@@ -111,12 +111,8 @@ class Database:
         await db.execute("CREATE INDEX IF NOT EXISTS idx_aweme_id ON aweme(aweme_id)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_author_id ON aweme(author_id)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_download_time ON aweme(download_time)")
-        await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_transcript_aweme_id ON transcript_job(aweme_id)"
-        )
-        await db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_transcript_status ON transcript_job(status)"
-        )
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_transcript_aweme_id ON transcript_job(aweme_id)")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_transcript_status ON transcript_job(status)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_job_created_at ON job(created_at)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_job_status ON job(status)")
 
@@ -212,9 +208,7 @@ class Database:
 
     async def get_latest_aweme_time(self, author_id: str) -> Optional[int]:
         db = await self._get_conn()
-        cursor = await db.execute(
-            "SELECT MAX(create_time) FROM aweme WHERE author_id = ?", (author_id,)
-        )
+        cursor = await db.execute("SELECT MAX(create_time) FROM aweme WHERE author_id = ?", (author_id,))
         result = await cursor.fetchone()
         return result[0] if result and result[0] else None
 

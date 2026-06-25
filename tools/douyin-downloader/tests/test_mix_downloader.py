@@ -1,10 +1,10 @@
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.mix_downloader import MixDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 class _FakeAPIClient:

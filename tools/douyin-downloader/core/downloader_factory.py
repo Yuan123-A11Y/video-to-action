@@ -1,7 +1,6 @@
 from typing import Any, Optional
 
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.downloader_base import BaseDownloader
@@ -11,6 +10,8 @@ from core.music_downloader import MusicDownloader
 from core.user_downloader import UserDownloader
 from core.video_downloader import VideoDownloader
 from storage import Database, FileManager
+
+from config import ConfigLoader
 from utils.logger import setup_logger
 
 logger = setup_logger("DownloaderFactory")
@@ -57,8 +58,7 @@ class DownloaderFactory:
             return LiveDownloader(**common_args)
         elif url_type == "short":
             logger.error(
-                "Short URL was not resolved before dispatching. "
-                "Please call api_client.resolve_short_url() first."
+                "Short URL was not resolved before dispatching. " "Please call api_client.resolve_short_url() first."
             )
             return None
         else:

@@ -2,7 +2,6 @@ import asyncio
 import time
 
 import pytest
-
 from tools.cookie_fetcher import (
     extract_ms_token_from_text,
     filter_cookies,
@@ -139,10 +138,7 @@ def test_try_extract_ms_token_from_observed_headers():
 
 
 def test_extract_ms_token_from_text_supports_json_and_query_formats():
-    assert (
-        extract_ms_token_from_text("https://www.douyin.com/?foo=1&msToken=query-token&bar=2")
-        == "query-token"
-    )
+    assert extract_ms_token_from_text("https://www.douyin.com/?foo=1&msToken=query-token&bar=2") == "query-token"
     assert extract_ms_token_from_text('{"msToken":"json-token","x":1}') == "json-token"
 
 

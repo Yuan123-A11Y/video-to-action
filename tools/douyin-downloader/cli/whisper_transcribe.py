@@ -283,9 +283,7 @@ def _safe_stem(stem):
     return stem
 
 
-def transcribe_file(
-    video_path, model, ffmpeg_path, output_formats, language, converter, output_dir=None
-):
+def transcribe_file(video_path, model, ffmpeg_path, output_formats, language, converter, output_dir=None):
     video_path = Path(video_path)
     stem = _safe_stem(video_path.stem)
 
@@ -512,12 +510,8 @@ def main():
         for i, video in enumerate(videos, 1):
             display.start_file(i, video.name)
             try:
-                ok = transcribe_file(
-                    video, model, ffmpeg_path, output_formats, args.language, converter, args.output
-                )
-                display.complete_file(
-                    "success" if ok else "failed", video.name if ok else "识别失败"
-                )
+                ok = transcribe_file(video, model, ffmpeg_path, output_formats, args.language, converter, args.output)
+                display.complete_file("success" if ok else "failed", video.name if ok else "识别失败")
             except KeyboardInterrupt:
                 display.complete_file("failed", "用户中断")
                 raise

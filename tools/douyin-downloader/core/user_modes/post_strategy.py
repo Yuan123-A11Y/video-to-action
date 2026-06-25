@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from core.user_modes.base_strategy import BaseUserModeStrategy
+
 from utils.logger import setup_logger
 
 logger = setup_logger("PostUserModeStrategy")
@@ -39,8 +40,7 @@ class PostUserModeStrategy(BaseUserModeStrategy):
                 if page.get("status_code") == 0:
                     pagination_restricted = True
                     logger.warning(
-                        "User post page empty at cursor=%s (status_code=0); "
-                        "will attempt browser fallback",
+                        "User post page empty at cursor=%s (status_code=0); " "will attempt browser fallback",
                         request_cursor,
                     )
                 break
@@ -73,8 +73,7 @@ class PostUserModeStrategy(BaseUserModeStrategy):
             await self.downloader._recover_user_post_with_browser(sec_uid, user_info, aweme_list)
             if not aweme_list:
                 raise RuntimeError(
-                    "抖音接口未返回作品列表（可能触发了反爬限制），"
-                    "请稍后重试或尝试重新登录抖音刷新 Cookie"
+                    "抖音接口未返回作品列表（可能触发了反爬限制），" "请稍后重试或尝试重新登录抖音刷新 Cookie"
                 )
 
         return aweme_list

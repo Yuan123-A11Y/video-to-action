@@ -9,7 +9,6 @@ from pathlib import Path
 
 import httpx
 
-from video_to_action.analyzer import Analyzer
 from video_to_action.analyzer_v2 import AnalyzerV2
 from video_to_action.config import get_output_dir, load_config
 from video_to_action.downloader import download_video
@@ -46,12 +45,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     process_parser.add_argument("--config", default=None, help="配置文件路径")
     process_parser.add_argument("--output", default="outputs", help="输出目录")
-    process_parser.add_argument(
-        "--save-to-kb", action="store_true", help="保存分析结果到知识库"
-    )
-    process_parser.add_argument(
-        "--verbose", action="store_true", help="输出详细调试信息"
-    )
+    process_parser.add_argument("--save-to-kb", action="store_true", help="保存分析结果到知识库")
+    process_parser.add_argument("--verbose", action="store_true", help="输出详细调试信息")
 
     # 搜索命令
     search_parser = subparsers.add_parser("search", help="搜索知识库")
@@ -64,7 +59,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     export_parser.add_argument("--output", default=None, help="输出文件路径")
 
     # 统计命令
-    stats_parser = subparsers.add_parser("kb-stats", help="显示知识库统计信息")
+    stats_parser = subparsers.add_parser("kb-stats", help="显示知识库统计信息")  # noqa: F841
 
     # 如果不使用子命令，兼容旧版用法（直接跟URL）
     parser.add_argument("url_positional", nargs="?", help=argparse.SUPPRESS)
@@ -76,12 +71,8 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--config", default=None, help="配置文件路径")
     parser.add_argument("--output", default="outputs", help="输出目录")
-    parser.add_argument(
-        "--save-to-kb", action="store_true", help="保存分析结果到知识库"
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="输出详细调试信息"
-    )
+    parser.add_argument("--save-to-kb", action="store_true", help="保存分析结果到知识库")
+    parser.add_argument("--verbose", action="store_true", help="输出详细调试信息")
 
     args = parser.parse_args(argv)
 
@@ -94,9 +85,7 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 
-def _get_local_or_download(
-    url: str, config: dict, output_dir: Path
-) -> tuple[dict, Path]:
+def _get_local_or_download(url: str, config: dict, output_dir: Path) -> tuple[dict, Path]:
     """根据输入 URL 下载视频或直接使用本地文件。
 
     Returns:
@@ -257,9 +246,7 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             # 步骤 1：获取视频
-            download_result, video_path = _get_local_or_download(
-                args.url, config, output_dir
-            )
+            download_result, video_path = _get_local_or_download(args.url, config, output_dir)
             logger.info("视频获取成功：%s", video_path)
 
             # 步骤 2：提取内容
@@ -278,21 +265,13 @@ def main(argv: list[str] | None = None) -> int:
             # 步骤 3：分析内容
             print("[3/5] 正在分析视频内容...")
             logger.info("开始分析视频内容")
-            # 优先使用 AnalyzerV2（支持多模态分析）
-            try:
-                analyzer = AnalyzerV2(config)
-                frames = extracted.get("frames", [])
-                plan = analyzer.analyze(
-                    extracted.get("text", ""),
-                    download_result["platform"],
-                    frames=frames if frames else None,
-                )
-            except Exception as e:
-                logger.warning("AnalyzerV2 初始化失败，回退到 Analyzer: %s", e)
-                analyzer = Analyzer(config)
-                plan = analyzer.analyze(
-                    extracted.get("text", ""), download_result["platform"]
-                )
+            analyzer = AnalyzerV2(config)
+            frames = extracted.get("frames", [])
+            plan = analyzer.analyze(
+                extracted.get("text", ""),
+                download_result["platform"],
+                frames=frames if frames else None,
+            )
 
             print(f"分析完成，主题：{plan.get('theme', '未知')}")
             logger.info("分析完成，主题：%s", plan.get("theme", "未知"))
@@ -338,9 +317,7 @@ def main(argv: list[str] | None = None) -> int:
                             if fix.get("executable") and fix.get("new_command"):
                                 print(f"尝试修复：{fix['message']}")
                                 logger.info("尝试修复命令：%s", fix["message"])
-                                fixed_result = executor.execute(
-                                    fix["new_command"], confirm=confirm_all
-                                )
+                                fixed_result = executor.execute(fix["new_command"], confirm=confirm_all)
                                 result["fixed_result"] = fixed_result
                             else:
                                 print(f"修复建议（未自动执行）：{fix['message']}")

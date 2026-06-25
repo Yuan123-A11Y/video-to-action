@@ -85,10 +85,7 @@ _FIXTURE_SAMPLES = _load_fixture_samples()
 
 @pytest.mark.skipif(
     not _FIXTURE_SAMPLES,
-    reason=(
-        "tests/fixtures/proxy_samples.json missing; skip fixture replay "
-        "(task 7.2 creates the fixture)."
-    ),
+    reason=("tests/fixtures/proxy_samples.json missing; skip fixture replay " "(task 7.2 creates the fixture)."),
 )
 @pytest.mark.parametrize(
     "sample",
@@ -114,9 +111,7 @@ def test_is_valid_proxy_matches_fixture(sample: Dict[str, Any]) -> None:
     expected = sample.get("expected") or {}
     expected_valid = bool(expected.get("isValid"))
 
-    assert isinstance(input_value, str), "fixture row must carry a string `input`; got {!r}".format(
-        input_value
-    )
+    assert isinstance(input_value, str), "fixture row must carry a string `input`; got {!r}".format(input_value)
 
     actual_valid = _is_valid_proxy(input_value)
     assert actual_valid == expected_valid, "parity break: input={!r} expected={} got={}".format(
@@ -257,9 +252,7 @@ def test_is_valid_proxy_matches_oracle(value: str) -> None:
     """
     actual = _is_valid_proxy(value)
     expected = _expected_is_valid(value)
-    assert actual == expected, "parity break: value={!r} oracle={} actual={}".format(
-        value, expected, actual
-    )
+    assert actual == expected, "parity break: value={!r} oracle={} actual={}".format(value, expected, actual)
 
 
 # ---------------------------------------------------------------------------
@@ -287,7 +280,7 @@ def test_non_empty_valid_proxy_has_whitelisted_scheme(value: str) -> None:
         if value.startswith(candidate):
             scheme_prefix = scheme
             break
-    assert scheme_prefix is not None, (
-        "value passed _is_valid_proxy but has no whitelisted scheme prefix: {!r}".format(value)
+    assert scheme_prefix is not None, "value passed _is_valid_proxy but has no whitelisted scheme prefix: {!r}".format(
+        value
     )
     assert scheme_prefix in _PROXY_ALLOWED_SCHEMES

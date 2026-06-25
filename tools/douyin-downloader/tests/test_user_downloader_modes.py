@@ -270,9 +270,9 @@ def test_user_downloader_post_mode_uses_batch_db_insert(tmp_path, monkeypatch):
     result = asyncio.run(downloader.download({"sec_uid": "sec_uid_x"}))
 
     assert result.success == 2
-    assert add_aweme_calls["n"] == 0, (
-        f"post mode should not call add_aweme per item; got {add_aweme_calls['n']} single inserts"
-    )
+    assert (
+        add_aweme_calls["n"] == 0
+    ), f"post mode should not call add_aweme per item; got {add_aweme_calls['n']} single inserts"
     assert len(add_aweme_batch_calls) == 1
     assert {r["aweme_id"] for r in add_aweme_batch_calls[0]} == {"111", "222"}
 

@@ -5,11 +5,12 @@ from core.downloader_base import BaseDownloader
 
 def _build_video_downloader(tmp_path):
     from auth import CookieManager
-    from config import ConfigLoader
     from control import QueueManager, RateLimiter, RetryHandler
     from core.api_client import DouyinAPIClient
     from core.video_downloader import VideoDownloader
     from storage import FileManager
+
+    from config import ConfigLoader
 
     config = ConfigLoader()
     config.update(path=str(tmp_path))
@@ -154,11 +155,7 @@ def test_build_no_watermark_url_uses_h264_play_addr_variant(tmp_path):
 
     aweme_data = {
         "aweme_id": "7646971177114611826",
-        "video": {
-            "play_addr_h264": {
-                "url_list": ["https://v3-web.douyinvod.com/note-h264.mp4"]
-            }
-        },
+        "video": {"play_addr_h264": {"url_list": ["https://v3-web.douyinvod.com/note-h264.mp4"]}},
     }
 
     video_info = downloader._build_no_watermark_url(aweme_data)
@@ -171,15 +168,7 @@ def test_collect_image_live_urls_uses_h264_variant_when_play_addr_missing(tmp_pa
 
     aweme_data = {
         "image_post_info": {
-            "images": [
-                {
-                    "video": {
-                        "play_addr_h264": {
-                            "url_list": ["https://v3-web.douyinvod.com/live-h264.mp4"]
-                        }
-                    }
-                }
-            ]
+            "images": [{"video": {"play_addr_h264": {"url_list": ["https://v3-web.douyinvod.com/live-h264.mp4"]}}}]
         }
     }
 

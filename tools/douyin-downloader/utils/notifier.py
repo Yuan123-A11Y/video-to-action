@@ -72,9 +72,7 @@ def _mask_url_query(url: str) -> str:
         return url
     if not parts.query:
         return url
-    masked_pairs = [
-        (key, _mask_credential(val)) for key, val in parse_qsl(parts.query, keep_blank_values=True)
-    ]
+    masked_pairs = [(key, _mask_credential(val)) for key, val in parse_qsl(parts.query, keep_blank_values=True)]
     new_query = urlencode(masked_pairs)
     return urlunsplit((parts.scheme, parts.netloc, parts.path, new_query, parts.fragment))
 

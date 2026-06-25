@@ -1,8 +1,9 @@
 import asyncio
 
-from config import ConfigLoader
 from core.transcript_manager import TranscriptManager
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 class _FakeDatabase:

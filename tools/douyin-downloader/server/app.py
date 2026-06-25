@@ -12,15 +12,15 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core import DouyinAPIClient, DownloaderFactory, URLParser
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from server.jobs import JobManager
 from storage import FileManager
+
+from config import ConfigLoader
 from utils.logger import setup_logger
 from utils.validators import is_short_url, normalize_short_url
 
@@ -130,9 +130,7 @@ def build_app(config: ConfigLoader) -> FastAPI:
         executor=executor,
         max_concurrency=int(config.get("thread", 2) or 2),
         max_jobs=int(server_cfg.get("max_jobs") or JobManager.DEFAULT_MAX_JOBS),
-        job_ttl_seconds=float(
-            server_cfg.get("job_ttl_seconds") or JobManager.DEFAULT_JOB_TTL_SECONDS
-        ),
+        job_ttl_seconds=float(server_cfg.get("job_ttl_seconds") or JobManager.DEFAULT_JOB_TTL_SECONDS),
     )
 
     @asynccontextmanager

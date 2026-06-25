@@ -106,8 +106,7 @@ class CommentsCollector:
                 # cursor 未推进但服务器称 has_more=True：可能是接口变更或异常返回，
                 # 升级为 warning 便于线上观察。
                 logger.warning(
-                    "Comments cursor stuck (aweme=%s, cursor=%s, has_more=True); "
-                    "stopping to avoid infinite loop.",
+                    "Comments cursor stuck (aweme=%s, cursor=%s, has_more=True); " "stopping to avoid infinite loop.",
                     aweme_id,
                     cursor,
                 )

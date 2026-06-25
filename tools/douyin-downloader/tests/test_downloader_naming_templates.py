@@ -13,13 +13,13 @@ from __future__ import annotations
 from datetime import datetime
 
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.video_downloader import VideoDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 def _build_downloader(tmp_path):

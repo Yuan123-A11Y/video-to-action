@@ -14,9 +14,10 @@ except ImportError:  # pragma: no cover
     pytest.skip("fastapi not installed", allow_module_level=True)
 
 
-from config import ConfigLoader
 from server.app import build_app
 from server.jobs import JobManager
+
+from config import ConfigLoader
 
 
 @pytest.mark.asyncio

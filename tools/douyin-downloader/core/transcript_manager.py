@@ -6,10 +6,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiofiles
 import aiohttp
-
-from config import ConfigLoader
 from core.audio_extraction import AudioExtractError, extract_audio
 from storage import Database, FileManager
+
+from config import ConfigLoader
 from utils.logger import setup_logger
 
 logger = setup_logger("TranscriptManager")
@@ -133,9 +133,7 @@ class TranscriptManager:
         return api_key
 
     def _api_url(self) -> str:
-        api_url = str(
-            self._cfg().get("api_url", "https://api.openai.com/v1/audio/transcriptions")
-        ).strip()
+        api_url = str(self._cfg().get("api_url", "https://api.openai.com/v1/audio/transcriptions")).strip()
         return api_url or "https://api.openai.com/v1/audio/transcriptions"
 
     def resolve_output_dir(self, video_path: Path) -> Path:
@@ -208,13 +206,9 @@ class TranscriptManager:
 
         try:
             if not is_source_audio and self._upload_audio_only():
-                tmp_audio_dir = tempfile.TemporaryDirectory(
-                    prefix="transcript_audio_"
-                )
+                tmp_audio_dir = tempfile.TemporaryDirectory(prefix="transcript_audio_")
                 try:
-                    upload_path = await extract_audio(
-                        video_path, Path(tmp_audio_dir.name)
-                    )
+                    upload_path = await extract_audio(video_path, Path(tmp_audio_dir.name))
                 except AudioExtractError as exc:
                     error_message = str(exc)
                     await self._record_job(
@@ -284,9 +278,7 @@ class TranscriptManager:
                     skip_reason=None,
                     error_message=error_message,
                 )
-                logger.error(
-                    "Transcript failed for aweme %s: %s", aweme_id, error_message
-                )
+                logger.error("Transcript failed for aweme %s: %s", aweme_id, error_message)
                 return {
                     "status": "failed",
                     "reason": "transcription_error",
@@ -306,9 +298,7 @@ class TranscriptManager:
                         exc,
                     )
 
-    async def _write_outputs(
-        self, payload: Dict[str, Any], text_path: Path, json_path: Path
-    ) -> None:
+    async def _write_outputs(self, payload: Dict[str, Any], text_path: Path, json_path: Path) -> None:
         formats = set(self._response_formats())
 
         if "txt" in formats:
@@ -372,9 +362,7 @@ class TranscriptManager:
                         # (Property 1 / 2).
                         if api_key and api_key in body:
                             body = body.replace(api_key, _mask_api_key_local(api_key))
-                        raise RuntimeError(
-                            f"OpenAI transcription failed: status={response.status}, body={body}"
-                        )
+                        raise RuntimeError(f"OpenAI transcription failed: status={response.status}, body={body}")
 
                     payload = await response.json(content_type=None)
                     if not isinstance(payload, dict):

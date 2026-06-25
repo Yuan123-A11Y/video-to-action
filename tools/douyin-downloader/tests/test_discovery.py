@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
-
 from core.discovery import dump_hot_board, search_and_dump
 
 
@@ -35,9 +34,7 @@ class _FakeAPIClient:
 
 @pytest.mark.asyncio
 async def test_dump_hot_board_writes_jsonl(tmp_path):
-    api = _FakeAPIClient(
-        hot_items=[{"word": "foo", "hot_value": 100}, {"word": "bar", "hot_value": 50}]
-    )
+    api = _FakeAPIClient(hot_items=[{"word": "foo", "hot_value": 100}, {"word": "bar", "hot_value": 50}])
     result = await dump_hot_board(api, tmp_path)
     assert result["count"] == 2
     out = Path(result["path"])

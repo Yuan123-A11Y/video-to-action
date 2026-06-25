@@ -199,6 +199,4 @@ def test_default_template_matches_legacy_layout():
         media_type="video",
         mode="post",
     )
-    assert render_template(DEFAULT_FILE_TEMPLATE, ctx) == (
-        "2026-04-10_今天去爬山啦_7412345678901234567"
-    )
+    assert render_template(DEFAULT_FILE_TEMPLATE, ctx) == ("2026-04-10_今天去爬山啦_7412345678901234567")

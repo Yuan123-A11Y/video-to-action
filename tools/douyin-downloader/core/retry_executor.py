@@ -33,12 +33,13 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, List, Optional
 
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.downloader_factory import DownloaderFactory
 from core.url_parser import URLParser
 from storage import Database, FileManager
+
+from config import ConfigLoader
 from utils.logger import setup_logger
 from utils.validators import is_short_url, normalize_short_url
 
@@ -170,9 +171,7 @@ async def retry_failed_awemes(
                 # set_item_total drives the percentage bar in the renderer;
                 # advance_item later hooks into the same running total.
                 try:
-                    reporter.set_item_total(
-                        len(aweme_ids), detail=f"重试 {len(aweme_ids)} 个失败作品"
-                    )
+                    reporter.set_item_total(len(aweme_ids), detail=f"重试 {len(aweme_ids)} 个失败作品")
                 except Exception:
                     pass
 

@@ -1,10 +1,10 @@
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.music_downloader import MusicDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 class _FakeAPIClient:
@@ -100,9 +100,7 @@ async def test_music_downloader_uses_extension_from_music_url(tmp_path, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_music_downloader_falls_back_to_first_aweme_when_direct_audio_missing(
-    tmp_path, monkeypatch
-):
+async def test_music_downloader_falls_back_to_first_aweme_when_direct_audio_missing(tmp_path, monkeypatch):
     class _FallbackAPIClient(_FakeAPIClient):
         async def get_music_detail(self, _music_id: str):
             return {

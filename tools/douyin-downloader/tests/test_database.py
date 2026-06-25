@@ -2,7 +2,6 @@ import asyncio
 import json
 
 import pytest
-
 from storage import Database
 
 
@@ -218,9 +217,7 @@ async def test_add_aweme_batch_uses_single_commit(tmp_path, monkeypatch):
     ]
     await database.add_aweme_batch(items)
 
-    assert commit_count["n"] == 1, (
-        f"expected exactly 1 commit for batch insert, got {commit_count['n']}"
-    )
+    assert commit_count["n"] == 1, f"expected exactly 1 commit for batch insert, got {commit_count['n']}"
 
     await database.close()
 

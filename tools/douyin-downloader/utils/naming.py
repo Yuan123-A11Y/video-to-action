@@ -89,15 +89,11 @@ def validate_template(template: str, *, field_name: str = "template") -> None:
         raise TemplateValidationError(f"{field_name} must be <= {MAX_TEMPLATE_LENGTH} characters")
 
     if "/" in template or "\\" in template:
-        raise TemplateValidationError(
-            f"{field_name} must not contain path separators ('/' or '\\\\')"
-        )
+        raise TemplateValidationError(f"{field_name} must not contain path separators ('/' or '\\\\')")
 
     variables = _PLACEHOLDER_RE.findall(template)
     if not variables:
-        raise TemplateValidationError(
-            f"{field_name} must reference at least one variable like {{id}}"
-        )
+        raise TemplateValidationError(f"{field_name} must reference at least one variable like {{id}}")
 
     unknown = [v for v in variables if v not in ALLOWED_VARIABLES]
     if unknown:

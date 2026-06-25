@@ -2,7 +2,6 @@ import asyncio
 import time
 
 import pytest
-
 from control.queue_manager import QueueManager
 
 

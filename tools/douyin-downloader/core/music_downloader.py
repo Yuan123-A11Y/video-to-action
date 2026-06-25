@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 
 from core.downloader_base import BaseDownloader, DownloadResult
 from core.metadata import extract_author_sec_uid
+
 from utils.logger import setup_logger
 from utils.naming import (
     DEFAULT_FILE_TEMPLATE,
@@ -67,9 +68,7 @@ class MusicDownloader(BaseDownloader):
         self._progress_advance_item("failed", str(music_id))
         return result
 
-    async def _download_music_asset(
-        self, music_id: str, detail: Optional[Dict[str, Any]], music_url: str
-    ) -> bool:
+    async def _download_music_asset(self, music_id: str, detail: Optional[Dict[str, Any]], music_url: str) -> bool:
         session = await self.api_client.get_session()
         detail = detail or {}
 
@@ -79,9 +78,7 @@ class MusicDownloader(BaseDownloader):
             or (detail.get("music") or {}).get("title")
             or f"music_{music_id}"
         )
-        author_name = (
-            detail.get("author_name") or (detail.get("owner") or {}).get("nickname") or "music"
-        )
+        author_name = detail.get("author_name") or (detail.get("owner") or {}).get("nickname") or "music"
         publish_date = datetime.now().strftime("%Y-%m-%d")
         record_id = f"music_{music_id}"
         template_context = build_music_context(
@@ -131,9 +128,7 @@ class MusicDownloader(BaseDownloader):
             return False
 
         cover_url = self._extract_first_url(
-            detail.get("cover_large")
-            or detail.get("cover_thumb")
-            or (detail.get("music") or {}).get("cover_large")
+            detail.get("cover_large") or detail.get("cover_thumb") or (detail.get("music") or {}).get("cover_large")
         )
         if cover_url and self.config.get("cover"):
             cover_path = save_dir / f"{file_stem}_cover.jpg"

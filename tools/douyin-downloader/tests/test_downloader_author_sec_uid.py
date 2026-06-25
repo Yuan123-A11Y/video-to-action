@@ -29,15 +29,15 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.metadata import extract_author_sec_uid
 from core.music_downloader import MusicDownloader
 from core.video_downloader import VideoDownloader
 from storage import Database, FileManager
+
+from config import ConfigLoader
 
 
 # ---------------------------------------------------------------------------
@@ -73,9 +73,7 @@ def test_extract_returns_none_for_invalid_payloads(payload):
 # ---------------------------------------------------------------------------
 # 2. VideoDownloader end-to-end: the row in `aweme` carries author_sec_uid
 # ---------------------------------------------------------------------------
-def _build_video_downloader(
-    tmp_path, database: Database
-) -> tuple[VideoDownloader, DouyinAPIClient]:
+def _build_video_downloader(tmp_path, database: Database) -> tuple[VideoDownloader, DouyinAPIClient]:
     config = ConfigLoader()
     # Disable every optional side-car asset so the test only drives the
     # video + db.add_aweme path.
@@ -131,9 +129,7 @@ async def test_video_downloader_persists_author_sec_uid_when_present(tmp_path, m
         async def _fake_download_with_retry(self, _url, _save_path, _session, **_kwargs):
             return True
 
-        downloader._download_with_retry = _fake_download_with_retry.__get__(
-            downloader, VideoDownloader
-        )
+        downloader._download_with_retry = _fake_download_with_retry.__get__(downloader, VideoDownloader)
 
         aweme_id = "7600224486650121526"
         aweme_data = {
@@ -148,9 +144,7 @@ async def test_video_downloader_persists_author_sec_uid_when_present(tmp_path, m
             "video": {"play_addr": {"url_list": ["https://example.com/video.mp4"]}},
         }
 
-        success = await downloader._download_aweme_assets(
-            aweme_data, author_name="Alice", mode="post"
-        )
+        success = await downloader._download_aweme_assets(aweme_data, author_name="Alice", mode="post")
         assert success is True
 
         row = await _fetch_db_row(db, aweme_id)
@@ -178,9 +172,7 @@ async def test_video_downloader_persists_null_when_sec_uid_missing(tmp_path, mon
         async def _fake_download_with_retry(self, _url, _save_path, _session, **_kwargs):
             return True
 
-        downloader._download_with_retry = _fake_download_with_retry.__get__(
-            downloader, VideoDownloader
-        )
+        downloader._download_with_retry = _fake_download_with_retry.__get__(downloader, VideoDownloader)
 
         aweme_id = "7600224486650121999"
         aweme_data = {
@@ -191,9 +183,7 @@ async def test_video_downloader_persists_null_when_sec_uid_missing(tmp_path, mon
             "video": {"play_addr": {"url_list": ["https://example.com/video.mp4"]}},
         }
 
-        success = await downloader._download_aweme_assets(
-            aweme_data, author_name="Bob", mode="post"
-        )
+        success = await downloader._download_aweme_assets(aweme_data, author_name="Bob", mode="post")
         assert success is True
 
         row = await _fetch_db_row(db, aweme_id)
@@ -221,9 +211,7 @@ async def test_video_downloader_persists_null_when_author_absent(tmp_path, monke
         async def _fake_download_with_retry(self, _url, _save_path, _session, **_kwargs):
             return True
 
-        downloader._download_with_retry = _fake_download_with_retry.__get__(
-            downloader, VideoDownloader
-        )
+        downloader._download_with_retry = _fake_download_with_retry.__get__(downloader, VideoDownloader)
 
         aweme_id = "7600224486650122020"
         aweme_data = {
@@ -233,9 +221,7 @@ async def test_video_downloader_persists_null_when_author_absent(tmp_path, monke
             "video": {"play_addr": {"url_list": ["https://example.com/video.mp4"]}},
         }
 
-        success = await downloader._download_aweme_assets(
-            aweme_data, author_name="anon", mode="post"
-        )
+        success = await downloader._download_aweme_assets(aweme_data, author_name="anon", mode="post")
         assert success is True
 
         row = await _fetch_db_row(db, aweme_id)
@@ -264,9 +250,7 @@ class _MusicAPIClient:
         return object()
 
 
-def _build_music_downloader(
-    tmp_path, database: Database, api_client: _MusicAPIClient
-) -> MusicDownloader:
+def _build_music_downloader(tmp_path, database: Database, api_client: _MusicAPIClient) -> MusicDownloader:
     config = ConfigLoader()
     config.update(path=str(tmp_path), cover=False, json=False)
     file_manager = FileManager(str(tmp_path))

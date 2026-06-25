@@ -26,8 +26,8 @@ from typing import Any, Dict, Optional, Tuple
 
 import aiofiles
 import aiohttp
-
 from core.downloader_base import BaseDownloader, DownloadResult
+
 from utils.logger import setup_logger
 from utils.naming import (
     DEFAULT_FILE_TEMPLATE,

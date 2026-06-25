@@ -7,13 +7,13 @@ import asyncio
 from pathlib import Path
 
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.live_downloader import LiveDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 class _FakeStreamResponse:
@@ -56,16 +56,19 @@ def _build_downloader(tmp_path):
     cookie_manager = CookieManager(str(tmp_path / ".cookies.json"))
     api_client = DouyinAPIClient({})
 
-    return LiveDownloader(
-        config,
+    return (
+        LiveDownloader(
+            config,
+            api_client,
+            file_manager,
+            cookie_manager,
+            database=None,
+            rate_limiter=RateLimiter(max_per_second=5),
+            retry_handler=RetryHandler(max_retries=1),
+            queue_manager=QueueManager(max_workers=1),
+        ),
         api_client,
-        file_manager,
-        cookie_manager,
-        database=None,
-        rate_limiter=RateLimiter(max_per_second=5),
-        retry_handler=RetryHandler(max_retries=1),
-        queue_manager=QueueManager(max_workers=1),
-    ), api_client
+    )
 
 
 def test_select_best_stream_url_prefers_flv_origin():

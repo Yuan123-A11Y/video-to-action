@@ -1,7 +1,5 @@
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.downloader_factory import DownloaderFactory
@@ -10,6 +8,8 @@ from core.music_downloader import MusicDownloader
 from core.user_downloader import UserDownloader
 from core.video_downloader import VideoDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 @pytest.mark.asyncio

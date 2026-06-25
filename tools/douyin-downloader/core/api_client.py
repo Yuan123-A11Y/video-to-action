@@ -6,8 +6,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlencode
 
 import aiohttp
-
 from auth import MsTokenManager
+
 from utils.cookie_utils import sanitize_cookies
 from utils.logger import setup_logger
 from utils.xbogus import XBogus
@@ -195,8 +195,7 @@ class DouyinAPIClient:
                             # Empty 200 response is a common anti-bot signal
                             # from Douyin. Retry with a fresh signature.
                             logger.warning(
-                                "Empty 200 response for %s (attempt %d/%d), "
-                                "likely anti-bot; will retry",
+                                "Empty 200 response for %s (attempt %d/%d), " "likely anti-bot; will retry",
                                 path,
                                 attempt + 1,
                                 max_retries,
@@ -310,9 +309,7 @@ class DouyinAPIClient:
                 normalized[key] = value
         return normalized
 
-    async def _build_user_page_params(
-        self, sec_uid: str, max_cursor: int, count: int
-    ) -> Dict[str, Any]:
+    async def _build_user_page_params(self, sec_uid: str, max_cursor: int, count: int) -> Dict[str, Any]:
         params = await self._default_query()
         params.update(
             {
@@ -328,9 +325,7 @@ class DouyinAPIClient:
     # aid=6383 works for notes/gallery but may miss some video content.
     _DETAIL_AID_CANDIDATES = ("6383", "1128")
 
-    async def get_video_detail(
-        self, aweme_id: str, *, suppress_error: bool = False
-    ) -> Optional[Dict[str, Any]]:
+    async def get_video_detail(self, aweme_id: str, *, suppress_error: bool = False) -> Optional[Dict[str, Any]]:
         for aid in self._DETAIL_AID_CANDIDATES:
             params = await self._default_query()
             params.update(
@@ -369,9 +364,7 @@ class DouyinAPIClient:
 
         return None
 
-    async def get_user_post(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 18
-    ) -> Dict[str, Any]:
+    async def get_user_post(self, sec_uid: str, max_cursor: int = 0, count: int = 18) -> Dict[str, Any]:
         params = await self._build_user_page_params(sec_uid, max_cursor, count)
         params.update(
             {
@@ -386,23 +379,17 @@ class DouyinAPIClient:
         raw = await self._request_json("/aweme/v1/web/aweme/post/", params)
         return self._normalize_paged_response(raw, item_keys=["aweme_list"])
 
-    async def get_user_like(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 20
-    ) -> Dict[str, Any]:
+    async def get_user_like(self, sec_uid: str, max_cursor: int = 0, count: int = 20) -> Dict[str, Any]:
         params = await self._build_user_page_params(sec_uid, max_cursor, count)
         raw = await self._request_json("/aweme/v1/web/aweme/favorite/", params)
         return self._normalize_paged_response(raw, item_keys=["aweme_list"])
 
-    async def get_user_mix(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 20
-    ) -> Dict[str, Any]:
+    async def get_user_mix(self, sec_uid: str, max_cursor: int = 0, count: int = 20) -> Dict[str, Any]:
         params = await self._build_user_page_params(sec_uid, max_cursor, count)
         raw = await self._request_json("/aweme/v1/web/mix/list/", params)
         return self._normalize_paged_response(raw, item_keys=["mix_list"])
 
-    async def get_user_music(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 20
-    ) -> Dict[str, Any]:
+    async def get_user_music(self, sec_uid: str, max_cursor: int = 0, count: int = 20) -> Dict[str, Any]:
         params = await self._build_user_page_params(sec_uid, max_cursor, count)
         raw = await self._request_json("/aweme/v1/web/music/list/", params)
         return self._normalize_paged_response(raw, item_keys=["music_list"])
@@ -462,9 +449,7 @@ class DouyinAPIClient:
         )
         return params
 
-    async def get_user_collects(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 10
-    ) -> Dict[str, Any]:
+    async def get_user_collects(self, sec_uid: str, max_cursor: int = 0, count: int = 10) -> Dict[str, Any]:
         if sec_uid and sec_uid != "self":
             logger.warning("Collect folders currently require self sec_uid, got=%s", sec_uid)
             return self._normalize_paged_response({}, item_keys=["collects_list"], source="api")
@@ -473,17 +458,13 @@ class DouyinAPIClient:
         raw = await self._request_json("/aweme/v1/web/collects/list/", params)
         return self._normalize_paged_response(raw, item_keys=["collects_list"])
 
-    async def get_collect_aweme(
-        self, collects_id: str, max_cursor: int = 0, count: int = 10
-    ) -> Dict[str, Any]:
+    async def get_collect_aweme(self, collects_id: str, max_cursor: int = 0, count: int = 10) -> Dict[str, Any]:
         params = await self._build_collect_page_params(max_cursor, count)
         params.update({"collects_id": collects_id})
         raw = await self._request_json("/aweme/v1/web/collects/video/list/", params)
         return self._normalize_paged_response(raw, item_keys=["aweme_list"])
 
-    async def get_user_collect_mix(
-        self, sec_uid: str, max_cursor: int = 0, count: int = 12
-    ) -> Dict[str, Any]:
+    async def get_user_collect_mix(self, sec_uid: str, max_cursor: int = 0, count: int = 12) -> Dict[str, Any]:
         if sec_uid and sec_uid != "self":
             logger.warning("Collect mix currently require self sec_uid, got=%s", sec_uid)
             return self._normalize_paged_response({}, item_keys=["mix_infos"], source="api")
@@ -514,9 +495,7 @@ class DouyinAPIClient:
         ``get_following_page``.
         """
         params = await self._default_query()
-        data = await self._request_json(
-            "/aweme/v1/web/user/profile/self/", params
-        )
+        data = await self._request_json("/aweme/v1/web/user/profile/self/", params)
         if data:
             return data.get("user")
         return None
@@ -543,17 +522,13 @@ class DouyinAPIClient:
             return None
         return data.get("music_info") or data.get("music_detail") or data
 
-    async def get_music_aweme(
-        self, music_id: str, cursor: int = 0, count: int = 20
-    ) -> Dict[str, Any]:
+    async def get_music_aweme(self, music_id: str, cursor: int = 0, count: int = 20) -> Dict[str, Any]:
         params = await self._default_query()
         params.update({"music_id": music_id, "cursor": cursor, "count": count})
         raw = await self._request_json("/aweme/v1/web/music/aweme/", params)
         return self._normalize_paged_response(raw, item_keys=["aweme_list"])
 
-    async def get_live_room_info(
-        self, room_id: str, *, sec_user_id: str = ""
-    ) -> Optional[Dict[str, Any]]:
+    async def get_live_room_info(self, room_id: str, *, sec_user_id: str = "") -> Optional[Dict[str, Any]]:
         """通过房间号（web_rid）拉取直播间信息。
 
         返回包含 room_info + stream_url 的 dict；若房间不在直播中或接口失败返回 None。
@@ -608,9 +583,7 @@ class DouyinAPIClient:
         """获取抖音热搜榜。返回归一化 dict，items 为热搜词条列表。"""
         params = await self._default_query()
         params.update({"detail_list": "1", "source": "6"})
-        raw = await self._request_json(
-            "/aweme/v1/web/hot/search/list/", params, suppress_error=True
-        )
+        raw = await self._request_json("/aweme/v1/web/hot/search/list/", params, suppress_error=True)
         # 热榜返回结构中数据在 data.word_list 或 word_list
         data_root = raw.get("data") if isinstance(raw.get("data"), dict) else raw
         word_list = data_root.get("word_list") if isinstance(data_root, dict) else None
@@ -660,9 +633,7 @@ class DouyinAPIClient:
                 "count": count,
             }
         )
-        raw = await self._request_json(
-            "/aweme/v1/web/general/search/single/", params, suppress_error=True
-        )
+        raw = await self._request_json("/aweme/v1/web/general/search/single/", params, suppress_error=True)
         # 搜索结果每条在 data[].aweme_info；需要拍平
         data_list = raw.get("data") if isinstance(raw.get("data"), list) else []
         items: List[Dict[str, Any]] = []
@@ -775,9 +746,7 @@ class DouyinAPIClient:
         raw = await self._request_json("/aweme/v1/web/comment/list/reply/", params)
         return self._normalize_paged_response(raw, item_keys=["comments"])
 
-    async def resolve_short_url(
-        self, short_url: str, *, timeout_seconds: float = 10.0
-    ) -> Optional[str]:
+    async def resolve_short_url(self, short_url: str, *, timeout_seconds: float = 10.0) -> Optional[str]:
         """跟随短链 302，返回最终 URL。失败时返回 None。
 
         单独设置较短超时（默认 10s），避免被目标站挂死后拖慢整轮下载。
@@ -928,9 +897,7 @@ class DouyinAPIClient:
                         )
                         return []
                     logger.warning("检测到验证码页面，请在浏览器中完成验证，程序会自动继续采集。")
-                    await self._wait_for_manual_verification(
-                        page, wait_timeout_seconds=wait_timeout_seconds
-                    )
+                    await self._wait_for_manual_verification(page, wait_timeout_seconds=wait_timeout_seconds)
                     if not page.is_closed():
                         try:
                             await page.goto(

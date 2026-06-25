@@ -152,18 +152,16 @@ def test_masked_config_bark_device_key_never_leaks(device_key: str) -> None:
     # Skip when the middle is unavoidably present in either the preserved
     # 4+4 edges or the mask sentinel itself (see `_MASK_SENTINEL` comment
     # at top of file for rationale).
-    middle_in_preserved = len(middle) > 0 and (
-        middle in device_key[:4] or middle in device_key[-4:]
-    )
+    middle_in_preserved = len(middle) > 0 and (middle in device_key[:4] or middle in device_key[-4:])
     middle_in_sentinel = len(middle) > 0 and middle in _MASK_SENTINEL
     if len(middle) > 0 and not middle_in_preserved and not middle_in_sentinel:
         # Check the masked field value directly, not the full JSON blob:
         # incidental bytes in other fields (e.g. `"sound": "bell"`) could
         # coincidentally contain the middle character and defeat the
         # assertion without representing a credential leak.
-        assert middle not in masked["device_key"], (
-            f"device_key middle {middle!r} leaked into masked field {masked['device_key']!r}"
-        )
+        assert (
+            middle not in masked["device_key"]
+        ), f"device_key middle {middle!r} leaked into masked field {masked['device_key']!r}"
     # Sanity: the serialized JSON exists and contains the mask marker.
     assert "***" in serialized
 
@@ -205,9 +203,9 @@ def test_masked_config_telegram_bot_token_never_leaks(bot_token: str) -> None:
     middle_in_sentinel = len(middle) > 0 and middle in _MASK_SENTINEL
     if len(middle) > 0 and not middle_in_preserved and not middle_in_sentinel:
         # Check masked field value only — see bark test for rationale.
-        assert middle not in masked["bot_token"], (
-            f"bot_token middle {middle!r} leaked into masked field {masked['bot_token']!r}"
-        )
+        assert (
+            middle not in masked["bot_token"]
+        ), f"bot_token middle {middle!r} leaked into masked field {masked['bot_token']!r}"
 
     assert "***" in masked["bot_token"]
     assert masked["chat_id"] == "CHAT_ID_PLACEHOLDER"
@@ -225,9 +223,7 @@ def test_masked_config_telegram_bot_token_never_leaks(bot_token: str) -> None:
     param=_url_safe_text,
 )
 @hyp_settings(max_examples=100)
-def test_masked_config_webhook_url_query_never_leaks(
-    token: str, host: str, path: str, param: str
-) -> None:
+def test_masked_config_webhook_url_query_never_leaks(token: str, host: str, path: str, param: str) -> None:
     """Webhook URL query values are masked; path/host are preserved.
 
     The token is URL-quoted before being placed into the query so that the
@@ -236,9 +232,7 @@ def test_masked_config_webhook_url_query_never_leaks(
     token's middle portion cannot be recovered from either the URL itself or
     the JSON-serialized config.
     """
-    url = "https://{host}/{path}?{param}={value}".format(
-        host=host, path=path, param=param, value=quote(token, safe="")
-    )
+    url = "https://{host}/{path}?{param}={value}".format(host=host, path=path, param=param, value=quote(token, safe=""))
     config = {"type": "webhook", "url": url}
     masked = _masked_config_for_log("webhook", config)
     serialized = json.dumps(masked, ensure_ascii=False)
@@ -250,9 +244,7 @@ def test_masked_config_webhook_url_query_never_leaks(
     # Same repetitive-middle caveat as the bark / telegram tests above.
     middle_in_preserved = len(middle) > 0 and (middle in token[:4] or middle in token[-4:])
     if len(middle) > 0 and not middle_in_preserved:
-        assert middle not in masked["url"], (
-            f"token middle {middle!r} leaked into masked URL {masked['url']!r}"
-        )
+        assert middle not in masked["url"], f"token middle {middle!r} leaked into masked URL {masked['url']!r}"
         assert middle not in serialized
 
     # Host + path must be preserved exactly so operators can still see which

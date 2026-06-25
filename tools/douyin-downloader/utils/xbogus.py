@@ -134,15 +134,13 @@ class XBogus:
     def build(self, url: str) -> Tuple[str, str, str]:
         ua_md5_array = self._md5_str_to_array(
             self._md5(
-                base64.b64encode(
-                    self._rc4_encrypt(self._ua_key, self._user_agent.encode("ISO-8859-1"))
-                ).decode("ISO-8859-1")
+                base64.b64encode(self._rc4_encrypt(self._ua_key, self._user_agent.encode("ISO-8859-1"))).decode(
+                    "ISO-8859-1"
+                )
             )
         )
 
-        empty_md5_array = self._md5_str_to_array(
-            self._md5(self._md5_str_to_array("d41d8cd98f00b204e9800998ecf8427e"))
-        )
+        empty_md5_array = self._md5_str_to_array(self._md5(self._md5_str_to_array("d41d8cd98f00b204e9800998ecf8427e")))
         url_md5_array = self._md5_encrypt(url)
 
         timer = int(time.time())

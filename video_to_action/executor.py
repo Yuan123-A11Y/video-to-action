@@ -25,9 +25,8 @@ class Executor:
             # 匹配通过 curl/wget 下载并直接执行 shell 的远程脚本模式
             patterns = [
                 r"curl\s+.*\|\s*(ba)?sh",
-                r"curl\s+.*\|\s*bash",
                 r"wget\s+.*\|\s*sh",
-                r"bash\s*<\s*\(curl",
+                r"bash\s+<\s*\(curl",
                 r"powershell\s+.*\|\s*iex",
             ]
             for pattern in patterns:
@@ -36,9 +35,7 @@ class Executor:
 
         if "install_system_software" in require_confirm:
             # 匹配 Linux/macOS/Windows 下的系统软件安装命令
-            if re.search(
-                r"^(sudo\s+)?(apt|yum|dnf|brew|choco|winget)\s+install", command_lower
-            ):
+            if re.search(r"^(sudo\s+)?(apt|yum|dnf|brew|choco|winget)\s+install", command_lower):
                 return True, "安装系统级软件"
 
         if "modify_system_env" in require_confirm:

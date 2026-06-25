@@ -9,6 +9,9 @@ from pathlib import Path
 class Extractor:
     """视频内容提取器。"""
 
+    # 类级别模型缓存（所有实例共享）
+    _model_cache = {}  # {cache_key: model}
+
     def __init__(self, config: dict, output_dir: Path):
         """初始化提取器并创建输出子目录。"""
         self.config = config
@@ -50,12 +53,42 @@ class Extractor:
             raise RuntimeError(f"ffmpeg 提取音频失败: {result.stderr}")
         return audio_path
 
+    def _detect_device(self) -> str:
+        """自动检测并返回最佳计算设备。"""
+
+        # 优先使用配置文件中的设置
+        config_device = self.config.get("transcription", {}).get("device", "auto")
+        if config_device != "auto":
+            return config_device
+
+        # 自动检测 CUDA
+        try:
+            from ctranslate2 import get_cuda_device_count
+
+            if get_cuda_device_count() > 0:
+                return "cuda"
+        except Exception:
+            pass
+
+        # 回退到 CPU
+        return "cpu"
+
     def transcribe(self, audio_path: Path) -> list[dict]:
         """使用 faster-whisper 将音频转写为带时间戳的文本片段。"""
         from faster_whisper import WhisperModel
 
         model_name = self.config.get("transcription", {}).get("model", "base")
-        model = WhisperModel(model_name, device="cpu", compute_type="int8")
+        device = self._detect_device()
+        compute_type = self.config.get("transcription", {}).get("compute_type", "int8")
+
+        # 使用缓存避免重复加载模型
+        cache_key = f"{model_name}_{device}_{compute_type}"
+        if cache_key not in self.__class__._model_cache:
+            model = WhisperModel(model_name, device=device, compute_type=compute_type)
+            self.__class__._model_cache[cache_key] = model
+        else:
+            model = self.__class__._model_cache[cache_key]
+
         segments, _ = model.transcribe(str(audio_path), language="zh")
         return [
             {

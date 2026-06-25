@@ -1,7 +1,6 @@
 import time
 
 import pytest
-
 from control.retry_handler import RetryHandler
 
 

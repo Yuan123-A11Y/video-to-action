@@ -64,9 +64,7 @@ class ConfigLoader:
             env_config["proxy"] = os.getenv("DOUYIN_PROXY")
         return env_config
 
-    def _normalize_mix_aliases(
-        self, config: Dict[str, Any], override_sources: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _normalize_mix_aliases(self, config: Dict[str, Any], override_sources: List[Dict[str, Any]]) -> Dict[str, Any]:
         # canonical key 为 mix，allmix 作为兼容别名保留并同步
         normalization_rules = (
             ("number", 0),
@@ -82,14 +80,10 @@ class ConfigLoader:
             allmix_value = section_config.get("allmix")
             section_default = DEFAULT_CONFIG.get(section, {})
             default_mix_value = (
-                section_default.get("mix", default_value)
-                if isinstance(section_default, dict)
-                else default_value
+                section_default.get("mix", default_value) if isinstance(section_default, dict) else default_value
             )
             default_allmix_value = (
-                section_default.get("allmix", default_value)
-                if isinstance(section_default, dict)
-                else default_value
+                section_default.get("allmix", default_value) if isinstance(section_default, dict) else default_value
             )
 
             mix_is_default = mix_value == default_mix_value
@@ -206,8 +200,7 @@ class ConfigLoader:
                     existing = loaded
             except (yaml.YAMLError, OSError) as exc:
                 logger.warning(
-                    "Failed to read existing config %s for merge: %s; "
-                    "falling back to UI-only snapshot",
+                    "Failed to read existing config %s for merge: %s; " "falling back to UI-only snapshot",
                     target,
                     exc,
                 )
@@ -242,9 +235,7 @@ class ConfigLoader:
             try:
                 os.chmod(target, 0o600)
             except OSError as exc:
-                logger.warning(
-                    "settings_chmod_failed: path=%s error=%r", target, exc
-                )
+                logger.warning("settings_chmod_failed: path=%s error=%r", target, exc)
         return True
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -283,9 +274,7 @@ class ConfigLoader:
         return {}
 
     def _candidate_auto_cookie_paths(self) -> List[Path]:
-        config_dir = (
-            Path(self.config_path).resolve().parent if self.config_path else Path.cwd().resolve()
-        )
+        config_dir = Path(self.config_path).resolve().parent if self.config_path else Path.cwd().resolve()
         search_roots = [
             config_dir,
             config_dir.parent,
@@ -369,9 +358,7 @@ class ConfigLoader:
                 try:
                     datetime.strptime(value, "%Y-%m-%d")
                 except ValueError:
-                    logger.warning(
-                        "Invalid %s format: %s (expected YYYY-MM-DD), clearing", field, value
-                    )
+                    logger.warning("Invalid %s format: %s (expected YYYY-MM-DD), clearing", field, value)
                     self.config[field] = ""
 
         return True

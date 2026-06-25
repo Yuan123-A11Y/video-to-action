@@ -7,12 +7,13 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 from urllib.parse import urlparse
 
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.metadata import extract_author_sec_uid
 from core.transcript_manager import TranscriptManager
 from storage import Database, FileManager, MetadataHandler
+
+from config import ConfigLoader
 from utils.logger import setup_logger
 from utils.naming import (
     DEFAULT_FILE_TEMPLATE,
@@ -218,9 +219,7 @@ class BaseDownloader(ABC):
         if not start_time and not end_time:
             return aweme_list
 
-        start_ts = (
-            int(datetime.strptime(start_time, "%Y-%m-%d").timestamp()) if start_time else None
-        )
+        start_ts = int(datetime.strptime(start_time, "%Y-%m-%d").timestamp()) if start_time else None
         end_ts = int(datetime.strptime(end_time, "%Y-%m-%d").timestamp()) if end_time else None
 
         filtered: List[Dict[str, Any]] = []
@@ -312,9 +311,7 @@ class BaseDownloader(ABC):
 
             video_url, video_headers = video_info
             video_path = save_dir / f"{file_stem}.mp4"
-            if not await self._download_with_retry(
-                video_url, video_path, session, headers=video_headers
-            ):
+            if not await self._download_with_retry(video_url, video_path, session, headers=video_headers):
                 return False
             downloaded_files.append(video_path)
 
@@ -355,8 +352,7 @@ class BaseDownloader(ABC):
             )
             if not image_url_candidates and not image_live_urls:
                 logger.error(
-                    "No gallery assets found for aweme %s (aweme_type=%s, "
-                    "has image_post_info=%s, has images=%s)",
+                    "No gallery assets found for aweme %s (aweme_type=%s, " "has image_post_info=%s, has images=%s)",
                     aweme_id,
                     aweme_data.get("aweme_type"),
                     "image_post_info" in aweme_data,
@@ -378,9 +374,7 @@ class BaseDownloader(ABC):
                         return_saved_path=True,
                     )
                     if download_result:
-                        downloaded_files.append(
-                            download_result if isinstance(download_result, Path) else image_path
-                        )
+                        downloaded_files.append(download_result if isinstance(download_result, Path) else image_path)
                         break
                 if not download_result:
                     logger.error(f"Failed downloading image {index} for aweme {aweme_id}")
@@ -475,14 +469,10 @@ class BaseDownloader(ABC):
         }
         if publish_ts:
             manifest_record["publish_timestamp"] = publish_ts
-        await self.metadata_handler.append_download_manifest(
-            self.file_manager.base_path, manifest_record
-        )
+        await self.metadata_handler.append_download_manifest(self.file_manager.base_path, manifest_record)
 
         if media_type == "video" and video_path is not None:
-            transcript_result = await self.transcript_manager.process_video(
-                video_path, aweme_id=aweme_id
-            )
+            transcript_result = await self.transcript_manager.process_video(video_path, aweme_id=aweme_id)
             transcript_status = transcript_result.get("status")
             if transcript_status == "skipped":
                 logger.info(
@@ -566,9 +556,7 @@ class BaseDownloader(ABC):
             return "gallery"
         return "video"
 
-    def _build_no_watermark_url(
-        self, aweme_data: Dict[str, Any]
-    ) -> Optional[Tuple[str, Dict[str, str]]]:
+    def _build_no_watermark_url(self, aweme_data: Dict[str, Any]) -> Optional[Tuple[str, Dict[str, str]]]:
         video = aweme_data.get("video", {})
         quality = str(self.config.get("video_quality") or "highest")
         play_addr = self._pick_preferred_play_addr(video, quality) or {}
@@ -657,9 +645,7 @@ class BaseDownloader(ABC):
         return BaseDownloader._pick_play_addr_by_quality(video, "highest")
 
     @staticmethod
-    def _pick_play_addr_by_quality(
-        video: Dict[str, Any], quality: str = "highest"
-    ) -> Optional[Dict[str, Any]]:
+    def _pick_play_addr_by_quality(video: Dict[str, Any], quality: str = "highest") -> Optional[Dict[str, Any]]:
         """从 video.bit_rate 多档率中按目标画质挑选 play_addr。
 
         抖音 API 的 ``video.bit_rate`` 是按质量排序的字典列表，每项含
@@ -710,9 +696,7 @@ class BaseDownloader(ABC):
         return entries[0][2]
 
     @staticmethod
-    def _pick_preferred_play_addr(
-        video: Dict[str, Any], quality: str = "highest"
-    ) -> Optional[Dict[str, Any]]:
+    def _pick_preferred_play_addr(video: Dict[str, Any], quality: str = "highest") -> Optional[Dict[str, Any]]:
         preferred = BaseDownloader._pick_play_addr_by_quality(video, quality)
         if preferred:
             return preferred
@@ -723,9 +707,7 @@ class BaseDownloader(ABC):
             return primary
         for key in BaseDownloader._PLAY_ADDR_KEYS:
             candidate = video.get(key)
-            if isinstance(candidate, dict) and (
-                BaseDownloader._extract_first_url(candidate) or candidate.get("uri")
-            ):
+            if isinstance(candidate, dict) and (BaseDownloader._extract_first_url(candidate) or candidate.get("uri")):
                 return candidate
         return None
 
@@ -736,16 +718,11 @@ class BaseDownloader(ABC):
         if not isinstance(video, dict):
             return False
         return bool(
-            video.get("vid")
-            or (isinstance(video.get("download_addr"), dict) and video["download_addr"].get("uri"))
+            video.get("vid") or (isinstance(video.get("download_addr"), dict) and video["download_addr"].get("uri"))
         )
 
     def _collect_image_urls(self, aweme_data: Dict[str, Any]) -> List[str]:
-        return [
-            candidates[0]
-            for candidates in self._collect_image_url_candidates(aweme_data)
-            if candidates
-        ]
+        return [candidates[0] for candidates in self._collect_image_url_candidates(aweme_data) if candidates]
 
     def _collect_image_url_candidates(self, aweme_data: Dict[str, Any]) -> List[List[str]]:
         image_urls = []

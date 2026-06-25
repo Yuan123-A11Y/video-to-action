@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from core.downloader_base import BaseDownloader, DownloadResult
+
 from utils.logger import setup_logger
 
 logger = setup_logger("VideoDownloader")

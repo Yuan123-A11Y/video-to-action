@@ -6,12 +6,11 @@ from pathlib import Path
 
 from rich.logging import RichHandler
 
-
 # 平台检测规则
 PLATFORM_PATTERNS = {
-    "douyin": [r"douyin\.com", r"iesdouyin\.com", r"v\.douyin\.com"],
-    "bilibili": [r"bilibili\.com", r"b23\.tv"],
-    "youtube": [r"youtube\.com", r"youtu\.be"],
+    "douyin": [r"\bdouyin\.com", r"\biesdouyin\.com", r"\bv\.douyin\.com"],
+    "bilibili": [r"\bbilibili\.com", r"^https?://b23\.tv"],
+    "youtube": [r"\byoutube\.com", r"\byoutu\.be"],
 }
 
 
@@ -32,9 +31,7 @@ def sanitize_filename(name: str) -> str:
     return cleaned
 
 
-def is_dangerous_command(
-    command: str, forbidden_keywords: list[str] | None = None
-) -> bool:
+def is_dangerous_command(command: str, forbidden_keywords: list[str] | None = None) -> bool:
     """检查命令是否包含危险操作。"""
     if forbidden_keywords is None:
         forbidden_keywords = ["rm -rf /", "format", "del /f /s /q"]
@@ -62,19 +59,13 @@ def setup_logging(
         log_file: 日志文件路径；为 None 时不写入文件。
         rich_tracebacks: 是否使用 rich 渲染异常回溯，默认为 True。
     """
-    handlers: list[logging.Handler] = [
-        RichHandler(rich_tracebacks=rich_tracebacks)
-    ]
+    handlers: list[logging.Handler] = [RichHandler(rich_tracebacks=rich_tracebacks)]
 
     if log_file:
         file_path = Path(log_file)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(file_path, encoding="utf-8")
-        file_handler.setFormatter(
-            logging.Formatter(
-                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-        )
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         handlers.append(file_handler)
 
     logging.basicConfig(

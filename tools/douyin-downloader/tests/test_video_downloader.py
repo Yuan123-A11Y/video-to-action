@@ -4,13 +4,13 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from auth import CookieManager
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core.api_client import DouyinAPIClient
 from core.video_downloader import VideoDownloader
 from storage import FileManager
+
+from config import ConfigLoader
 
 
 class _FakeProgressReporter:
@@ -116,11 +116,7 @@ async def test_video_downloader_downloads_note_video_fallback(tmp_path, monkeypa
             "aweme_id": aweme_id,
             "aweme_type": 68,
             "desc": "note 视频作品",
-            "video": {
-                "play_addr_h264": {
-                    "url_list": ["https://v3-web.douyinvod.com/note-h264.mp4"]
-                }
-            },
+            "video": {"play_addr_h264": {"url_list": ["https://v3-web.douyinvod.com/note-h264.mp4"]}},
         }
 
     async def _fake_get_session():
@@ -161,11 +157,7 @@ async def test_build_no_watermark_url_signs_with_headers(tmp_path, monkeypatch):
 
     aweme = {
         "aweme_id": "1",
-        "video": {
-            "play_addr": {
-                "url_list": ["https://www.douyin.com/aweme/v1/play/?video_id=1&watermark=0"]
-            }
-        },
+        "video": {"play_addr": {"url_list": ["https://www.douyin.com/aweme/v1/play/?video_id=1&watermark=0"]}},
     }
 
     url, headers = downloader._build_no_watermark_url(aweme)
@@ -211,9 +203,7 @@ async def test_build_no_watermark_url_avoids_playwm_when_uri_can_be_signed(tmp_p
 
 
 @pytest.mark.asyncio
-async def test_build_no_watermark_url_prefers_signed_uri_when_variant_exists(
-    tmp_path, monkeypatch
-):
+async def test_build_no_watermark_url_prefers_signed_uri_when_variant_exists(tmp_path, monkeypatch):
     downloader, api_client = _build_downloader(tmp_path)
 
     signed_url = "https://www.douyin.com/aweme/v1/play/?video_id=clean&watermark=0"
@@ -228,9 +218,7 @@ async def test_build_no_watermark_url_prefers_signed_uri_when_variant_exists(
     aweme = {
         "aweme_id": "1",
         "video": {
-            "play_addr_h264": {
-                "url_list": ["https://v3-web.douyinvod.com/direct-h264.mp4"]
-            },
+            "play_addr_h264": {"url_list": ["https://v3-web.douyinvod.com/direct-h264.mp4"]},
             "play_addr": {
                 "uri": "clean",
                 "url_list": ["https://v3-web.douyinvod.com/playwm/abc.mp4?watermark=1"],
@@ -289,9 +277,7 @@ async def test_download_aweme_assets_uses_publish_date_and_writes_manifest(tmp_p
         "video": {"play_addr": {"url_list": ["https://example.com/video.mp4"]}},
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert len(saved_paths) == 1
@@ -349,9 +335,7 @@ async def test_download_aweme_assets_keeps_success_when_transcript_skipped(tmp_p
         "video": {"play_addr": {"url_list": ["https://example.com/video.mp4"]}},
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
 
@@ -397,9 +381,7 @@ async def test_download_aweme_assets_video_writes_cover_avatar_and_json(tmp_path
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert any(path.name.endswith(".mp4") for path in saved_paths)
@@ -445,9 +427,7 @@ async def test_download_aweme_assets_gallery_downloads_live_photo_videos(tmp_pat
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert any(path.suffix == ".webp" for path in saved_paths)
@@ -481,28 +461,14 @@ async def test_download_aweme_assets_gallery_preserves_real_image_extensions(tmp
         "desc": "图集后缀归一化",
         "image_post_info": {
             "images": [
-                {
-                    "display_image": {
-                        "url_list": ["https://example.com/gallery_1.png~tplv-obj.image?x=1"]
-                    }
-                },
-                {
-                    "display_image": {
-                        "url_list": ["https://example.com/gallery_2.jpeg~tplv-resize:1080:0.image"]
-                    }
-                },
-                {
-                    "display_image": {
-                        "url_list": ["https://example.com/gallery_3.jpg?from=unit-test"]
-                    }
-                },
+                {"display_image": {"url_list": ["https://example.com/gallery_1.png~tplv-obj.image?x=1"]}},
+                {"display_image": {"url_list": ["https://example.com/gallery_2.jpeg~tplv-resize:1080:0.image"]}},
+                {"display_image": {"url_list": ["https://example.com/gallery_3.jpg?from=unit-test"]}},
             ]
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert [path.suffix for path in saved_paths] == [".png", ".jpeg", ".jpg"]
@@ -511,9 +477,7 @@ async def test_download_aweme_assets_gallery_preserves_real_image_extensions(tmp
 
 
 @pytest.mark.asyncio
-async def test_download_aweme_assets_gallery_uses_response_content_type_for_suffix(
-    tmp_path, monkeypatch
-):
+async def test_download_aweme_assets_gallery_uses_response_content_type_for_suffix(tmp_path, monkeypatch):
     downloader, api_client = _build_downloader(tmp_path)
     downloader.config.update(music=False, cover=False, avatar=False, json=False, folderstyle=True)
 
@@ -549,14 +513,10 @@ async def test_download_aweme_assets_gallery_uses_response_content_type_for_suff
         "aweme_id": aweme_id,
         "desc": "响应头决定后缀",
         "create_time": publish_ts,
-        "image_post_info": {
-            "images": [{"display_image": {"url_list": ["https://example.com/gallery_1.image?x=1"]}}]
-        },
+        "image_post_info": {"images": [{"display_image": {"url_list": ["https://example.com/gallery_1.image?x=1"]}}]},
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     save_dir = tmp_path / "测试作者" / "post" / f"{publish_date}_响应头决定后缀_{aweme_id}"
@@ -605,9 +565,7 @@ async def test_download_aweme_assets_gallery_tries_next_image_candidate(tmp_path
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert attempted_urls == [
@@ -670,9 +628,7 @@ async def test_download_aweme_assets_gallery_succeeds_with_only_live_videos(tmp_
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is True
     assert len(saved_paths) == 2
@@ -684,9 +640,7 @@ async def test_download_aweme_assets_gallery_succeeds_with_only_live_videos(tmp_
 
 
 @pytest.mark.asyncio
-async def test_download_aweme_assets_gallery_fails_when_live_video_download_fails(
-    tmp_path, monkeypatch
-):
+async def test_download_aweme_assets_gallery_fails_when_live_video_download_fails(tmp_path, monkeypatch):
     downloader, api_client = _build_downloader(tmp_path)
     downloader.config.update(music=False, cover=False, avatar=False, json=False, folderstyle=True)
 
@@ -719,9 +673,7 @@ async def test_download_aweme_assets_gallery_fails_when_live_video_download_fail
         },
     }
 
-    success = await downloader._download_aweme_assets(
-        aweme_data, author_name="测试作者", mode="post"
-    )
+    success = await downloader._download_aweme_assets(aweme_data, author_name="测试作者", mode="post")
 
     assert success is False
     assert any(path.name.endswith(".webp") for path in saved_paths)
@@ -817,9 +769,7 @@ def test_collect_image_urls_prefers_aweme_image_url_list_before_display_image(tm
             "images": [
                 {
                     "url_list": ["https://cdn.example.com/clean-from-aweme.webp"],
-                    "display_image": {
-                        "url_list": ["https://cdn.example.com/tplv-dy-water-v2/display.webp"]
-                    },
+                    "display_image": {"url_list": ["https://cdn.example.com/tplv-dy-water-v2/display.webp"]},
                     "download_url_list": ["https://cdn.example.com/tplv-dy-water-v2/download.webp"],
                 },
             ]
@@ -841,18 +791,12 @@ def test_collect_image_urls_prefers_non_watermark_gallery_fields(tmp_path):
             "images": [
                 {
                     "display_image": {"url_list": ["https://cdn.example.com/clean-display.webp"]},
-                    "download_url": {
-                        "url_list": ["https://cdn.example.com/tplv-dy-water-v2/water-download.webp"]
-                    },
-                    "owner_watermark_image": {
-                        "url_list": ["https://cdn.example.com/owner_watermark_image.webp"]
-                    },
+                    "download_url": {"url_list": ["https://cdn.example.com/tplv-dy-water-v2/water-download.webp"]},
+                    "owner_watermark_image": {"url_list": ["https://cdn.example.com/owner_watermark_image.webp"]},
                 },
                 {
                     "url_list": ["https://cdn.example.com/clean-top.webp"],
-                    "download_url_list": [
-                        "https://cdn.example.com/tplv-dy-water-v2/water-list.webp"
-                    ],
+                    "download_url_list": ["https://cdn.example.com/tplv-dy-water-v2/water-list.webp"],
                 },
             ]
         },
@@ -874,9 +818,7 @@ def test_iter_gallery_items_image_list_key(tmp_path):
 
     aweme_data = {
         "aweme_id": "100004",
-        "image_post_info": {
-            "image_list": [{"display_image": {"url_list": ["https://example.com/img.webp"]}}]
-        },
+        "image_post_info": {"image_list": [{"display_image": {"url_list": ["https://example.com/img.webp"]}}]},
     }
 
     items = downloader._iter_gallery_items(aweme_data)

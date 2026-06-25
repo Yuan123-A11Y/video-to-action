@@ -14,6 +14,7 @@ spec and exercises the older paths). New behaviour covered here:
 - ``_resolve_api_key`` priority (env → settings → none).
 - Property 2 (api_key never appears in logs).
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,8 +23,6 @@ from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock
 
 import pytest
-
-from config import ConfigLoader
 from core import transcript_manager as tm_mod
 from core.audio_extraction import (
     AudioExtractError,
@@ -32,6 +31,8 @@ from core.audio_extraction import (
 )
 from core.transcript_manager import TranscriptManager
 from storage import FileManager
+
+from config import ConfigLoader
 
 # ---------------------------------------------------------------------------
 # Test doubles
@@ -143,9 +144,7 @@ def test_resolve_api_key_priority(
 # ---------------------------------------------------------------------------
 
 
-async def test_process_video_extracts_audio_and_uploads_mp3(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_process_video_extracts_audio_and_uploads_mp3(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manager, db, download_root = _build_manager(
         tmp_path, api_key_env_value="sk-DEADBEEF12345678", monkeypatch=monkeypatch
     )
@@ -179,9 +178,7 @@ async def test_process_video_extracts_audio_and_uploads_mp3(
         return {"text": "hello world"}
 
     monkeypatch.setattr(tm_mod, "extract_audio", fake_extract)
-    monkeypatch.setattr(
-        manager, "_call_openai_transcription", fake_call
-    )
+    monkeypatch.setattr(manager, "_call_openai_transcription", fake_call)
 
     result = await manager.process_video(video, aweme_id="aw1")
 
@@ -204,9 +201,7 @@ async def test_process_video_extracts_audio_and_uploads_mp3(
 async def test_process_video_audio_extract_failure_does_not_call_openai(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value="sk-test123", monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value="sk-test123", monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     async def failing_extract(video_path: Path, out_dir: Path, **kwargs):
@@ -214,9 +209,7 @@ async def test_process_video_audio_extract_failure_does_not_call_openai(
 
     open_mock = AsyncMock()
     monkeypatch.setattr(tm_mod, "extract_audio", failing_extract)
-    monkeypatch.setattr(
-        manager, "_call_openai_transcription", open_mock
-    )
+    monkeypatch.setattr(manager, "_call_openai_transcription", open_mock)
 
     result = await manager.process_video(video, aweme_id="aw_fail")
 
@@ -235,13 +228,9 @@ async def test_process_video_audio_extract_failure_does_not_call_openai(
     assert db.transcript_jobs[-1]["skip_reason"] is None
 
 
-async def test_process_video_audio_extract_error_classes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_process_video_audio_extract_error_classes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """All AudioExtractError subclasses end up classified the same way."""
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     class _CustomError(AudioExtractError):
@@ -252,9 +241,7 @@ async def test_process_video_audio_extract_error_classes(
 
     monkeypatch.setattr(tm_mod, "extract_audio", failing_extract)
     open_mock = AsyncMock()
-    monkeypatch.setattr(
-        manager, "_call_openai_transcription", open_mock
-    )
+    monkeypatch.setattr(manager, "_call_openai_transcription", open_mock)
 
     result = await manager.process_video(video, aweme_id="aw_x")
     assert result["reason"] == "audio_extract_failed"
@@ -286,9 +273,7 @@ async def test_process_video_source_audio_passthrough(
     expected_content_type: str,
 ) -> None:
     """When source is already audio, we skip extraction and upload as-is."""
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch)
     audio_path = _make_video(download_root, name=f"clip{extension}")
 
     extract_mock = AsyncMock()
@@ -320,9 +305,7 @@ async def test_process_video_source_audio_passthrough(
 # ---------------------------------------------------------------------------
 
 
-async def test_process_video_legacy_upload_when_flag_disabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_process_video_legacy_upload_when_flag_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     manager, db, download_root = _build_manager(
         tmp_path,
         transcript={
@@ -345,9 +328,7 @@ async def test_process_video_legacy_upload_when_flag_disabled(
     captured: Dict[str, Any] = {}
 
     async def fake_call(*, api_key, file_path, filename, content_type, model):
-        captured.update(
-            file_path=file_path, filename=filename, content_type=content_type
-        )
+        captured.update(file_path=file_path, filename=filename, content_type=content_type)
         return {"text": "ok"}
 
     monkeypatch.setattr(manager, "_call_openai_transcription", fake_call)
@@ -370,9 +351,7 @@ async def test_process_video_tempdir_cleanup_failure_only_warns(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value="sk-test", monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     async def fake_extract(video_path: Path, out_dir: Path, **kwargs):
@@ -410,10 +389,7 @@ async def test_process_video_tempdir_cleanup_failure_only_warns(
     # Task itself reports success; cleanup error is a WARNING, not an
     # error.
     assert result["status"] == "success"
-    assert any(
-        "Failed to clean up transcript audio temp dir" in rec.message
-        for rec in caplog.records
-    )
+    assert any("Failed to clean up transcript audio temp dir" in rec.message for rec in caplog.records)
 
 
 # ---------------------------------------------------------------------------
@@ -427,9 +403,7 @@ async def test_process_video_does_not_log_api_key_plaintext(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     sentinel_key = "sk-PLAINTEXT-SECRET-DO-NOT-LEAK-12345"
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value=sentinel_key, monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value=sentinel_key, monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     async def fake_extract(video_path: Path, out_dir: Path, **kwargs):
@@ -468,9 +442,7 @@ async def test_call_openai_transcription_redacts_api_key_in_error_body(
     otherwise it lands in ``transcript_jobs.error_message`` and a
     later DB dump leaks it."""
     sentinel = "sk-LEAK-PROBE-1234567890ABCDEF"
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value=sentinel, monkeypatch=monkeypatch
-    )
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value=sentinel, monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     # Skip extract_audio so we go straight to _call_openai_transcription.
@@ -521,9 +493,7 @@ async def test_call_openai_transcription_redacts_api_key_in_error_body(
     result = await manager.process_video(video, aweme_id="aw_redact")
     assert result["status"] == "failed"
     err_msg = result["error"]
-    assert sentinel not in err_msg, (
-        f"raw api_key leaked into error_message: {err_msg!r}"
-    )
+    assert sentinel not in err_msg, f"raw api_key leaked into error_message: {err_msg!r}"
     # Masked form should be present so the user can still tell which
     # key was used.
     assert "sk-L...CDEF" in err_msg
@@ -538,12 +508,8 @@ async def test_call_openai_transcription_redacts_api_key_in_error_body(
 # ---------------------------------------------------------------------------
 
 
-async def test_process_video_missing_api_key_skips(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    manager, db, download_root = _build_manager(
-        tmp_path, api_key_env_value=None, monkeypatch=monkeypatch
-    )
+async def test_process_video_missing_api_key_skips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manager, db, download_root = _build_manager(tmp_path, api_key_env_value=None, monkeypatch=monkeypatch)
     video = _make_video(download_root)
 
     extract_mock = AsyncMock()

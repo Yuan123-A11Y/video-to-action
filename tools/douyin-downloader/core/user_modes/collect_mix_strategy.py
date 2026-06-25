@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Dict, List
 
 from core.user_modes.base_strategy import BaseUserModeStrategy
+
 from utils.logger import setup_logger
 
 logger = setup_logger("CollectMixUserModeStrategy")

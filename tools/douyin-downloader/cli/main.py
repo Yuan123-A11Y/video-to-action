@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from auth import CookieManager
-from cli.progress_display import ProgressDisplay
-from config import ConfigLoader
 from control import QueueManager, RateLimiter, RetryHandler
 from core import DouyinAPIClient, DownloaderFactory, URLParser
 from storage import Database, FileManager
+
+from cli.progress_display import ProgressDisplay
+from config import ConfigLoader
 from utils.logger import set_console_log_level, setup_logger
 from utils.notifier import build_notifier
 from utils.validators import is_short_url, normalize_short_url
@@ -114,11 +115,7 @@ async def download_url(
                 "写入数据库历史" if (result and database) else "数据库未启用，跳过",
             )
         if result and database:
-            safe_config = {
-                k: v
-                for k, v in config.config.items()
-                if k not in ("cookies", "cookie", "transcript")
-            }
+            safe_config = {k: v for k, v in config.config.items() if k not in ("cookies", "cookie", "transcript")}
             await database.add_history(
                 {
                     "url": original_url,
@@ -293,8 +290,7 @@ async def _run_serve_subcommand(args, config: ConfigLoader) -> None:
         from server.app import run_server
     except ImportError as exc:
         display.print_error(
-            f"REST 服务模式需要安装可选依赖 fastapi + uvicorn："
-            f"\n  pip install fastapi uvicorn\n原始错误：{exc}"
+            f"REST 服务模式需要安装可选依赖 fastapi + uvicorn：" f"\n  pip install fastapi uvicorn\n原始错误：{exc}"
         )
         return
 

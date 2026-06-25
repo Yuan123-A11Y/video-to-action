@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from core.downloader_base import BaseDownloader, DownloadResult
 from core.user_mode_registry import UserModeRegistry
+
 from utils.logger import setup_logger
 
 logger = setup_logger("UserDownloader")
@@ -65,9 +66,7 @@ class UserDownloader(BaseDownloader):
                 continue
 
             self._progress_update_step("下载模式", f"开始处理 {mode} 作品")
-            mode_result = await strategy.download_mode(
-                sec_uid, user_info, seen_aweme_ids=seen_aweme_ids
-            )
+            mode_result = await strategy.download_mode(sec_uid, user_info, seen_aweme_ids=seen_aweme_ids)
             result.total += mode_result.total
             result.success += mode_result.success
             result.failed += mode_result.failed
@@ -138,10 +137,7 @@ class UserDownloader(BaseDownloader):
         # mode + collects_id filter. The cookie scope upstream already
         # guarantees this is the viewer themselves, so we can skip the
         # network round-trip via ``api_client.get_user_info``.
-        if (
-            normalized_modes.issubset(self.SELF_COLLECT_MODES)
-            and (str(self.config.get("collects_id") or "")).strip()
-        ):
+        if normalized_modes.issubset(self.SELF_COLLECT_MODES) and (str(self.config.get("collects_id") or "")).strip():
             self._progress_update_step("获取作者信息", "使用当前登录账号收藏夹上下文")
             return {
                 "uid": sec_uid,
@@ -236,9 +232,7 @@ class UserDownloader(BaseDownloader):
                 self._progress_advance_item("skipped", str(aweme_id or "unknown"))
                 return {"status": "skipped", "aweme_id": aweme_id}
 
-            success = await self._download_aweme_assets(
-                item, author_name, mode=mode, db_batch=db_batch
-            )
+            success = await self._download_aweme_assets(item, author_name, mode=mode, db_batch=db_batch)
             status = "success" if success else "failed"
             self._progress_advance_item(status, str(aweme_id or "unknown"))
             return {

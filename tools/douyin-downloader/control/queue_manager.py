@@ -24,9 +24,7 @@ class QueueManager:
                     logger.exception("Task failed")
                     raise
 
-        return await asyncio.gather(
-            *[_task_wrapper(task) for task in tasks], return_exceptions=True
-        )
+        return await asyncio.gather(*[_task_wrapper(task) for task in tasks], return_exceptions=True)
 
     async def download_batch(self, download_func: Callable, items: List[Any]) -> List[Any]:
         async def _download_wrapper(item):
@@ -37,6 +35,4 @@ class QueueManager:
                     logger.exception("Download failed for item: %r", item)
                     raise
 
-        return await asyncio.gather(
-            *[_download_wrapper(item) for item in items], return_exceptions=True
-        )
+        return await asyncio.gather(*[_download_wrapper(item) for item in items], return_exceptions=True)

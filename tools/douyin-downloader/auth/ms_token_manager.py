@@ -48,9 +48,7 @@ class MsTokenManager:
 
     @classmethod
     def gen_false_ms_token(cls) -> str:
-        token = (
-            "".join(random.choice(string.ascii_letters + string.digits) for _ in range(182)) + "=="
-        )
+        token = "".join(random.choice(string.ascii_letters + string.digits) for _ in range(182)) + "=="
         logger.debug("Generated fallback msToken")
         return token
 
@@ -112,9 +110,7 @@ class MsTokenManager:
             with urllib.request.urlopen(self.conf_url, timeout=self.timeout_seconds) as resp:
                 raw = resp.read().decode("utf-8")
             data = yaml.safe_load(raw) or {}
-            ms_conf = (
-                data.get("f2", {}).get("douyin", {}).get("msToken", {})  # type: ignore[union-attr]
-            )
+            ms_conf = data.get("f2", {}).get("douyin", {}).get("msToken", {})  # type: ignore[union-attr]
 
             required = {"url", "magic", "version", "dataType", "ulr", "strData"}
             if not required.issubset(ms_conf.keys()):

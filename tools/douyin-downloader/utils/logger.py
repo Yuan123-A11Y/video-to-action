@@ -46,7 +46,5 @@ def set_console_log_level(level: int) -> None:
     for name in _KNOWN_LOGGER_NAMES:
         logger = logging.getLogger(name)
         for handler in logger.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(
-                handler, logging.FileHandler
-            ):
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
                 handler.setLevel(level)

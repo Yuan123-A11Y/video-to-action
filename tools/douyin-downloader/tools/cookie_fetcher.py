@@ -121,9 +121,7 @@ async def capture_cookies(args: argparse.Namespace) -> int:
         page.on("request", _on_request)
 
         if args.auto_wait > 0:
-            print(
-                f"[INFO] 浏览器已启动，请在 {args.auto_wait} 秒内完成抖音登录。"
-            )
+            print(f"[INFO] 浏览器已启动，请在 {args.auto_wait} 秒内完成抖音登录。")
             print("[INFO] 时间到后会自动抓取当前 Cookie，无需在终端按 Enter。")
         else:
             print("[INFO] Browser launched. Please complete Douyin login in the opened window.")
@@ -133,15 +131,11 @@ async def capture_cookies(args: argparse.Namespace) -> int:
 
         storage = await context.storage_state()
         cookies = {
-            cookie["name"]: cookie["value"]
-            for cookie in storage["cookies"]
-            if cookie["domain"].endswith("douyin.com")
+            cookie["name"]: cookie["value"] for cookie in storage["cookies"] if cookie["domain"].endswith("douyin.com")
         }
         cookies = sanitize_cookies(cookies)
 
-        ms_token = await try_extract_ms_token(
-            page, cookies, observed_cookie_headers, observed_mstokens
-        )
+        ms_token = await try_extract_ms_token(page, cookies, observed_cookie_headers, observed_mstokens)
         if ms_token and not cookies.get("msToken"):
             cookies["msToken"] = ms_token
             print("[INFO] Extracted msToken from alternate sources.")
@@ -171,9 +165,8 @@ def is_timeout_error(exc: Exception) -> bool:
 
 
 def is_target_closed_error(exc: Exception) -> bool:
-    return (
-        exc.__class__.__name__ == "TargetClosedError"
-        or "Target page, context or browser has been closed" in str(exc)
+    return exc.__class__.__name__ == "TargetClosedError" or "Target page, context or browser has been closed" in str(
+        exc
     )
 
 
@@ -184,10 +177,7 @@ async def goto_with_fallback(page: Any, url: str) -> str:
         return PRIMARY_WAIT_UNTIL
     except Exception as exc:
         if is_target_closed_error(exc):
-            print(
-                "[WARN] Browser/page was closed during initial navigation, "
-                "continuing with current browser state."
-            )
+            print("[WARN] Browser/page was closed during initial navigation, " "continuing with current browser state.")
             return "target_closed"
         if not is_timeout_error(exc):
             raise
@@ -201,8 +191,7 @@ async def goto_with_fallback(page: Any, url: str) -> str:
     except Exception as exc:
         if is_target_closed_error(exc):
             print(
-                "[WARN] Browser/page was closed during fallback navigation, "
-                "continuing with current browser state."
+                "[WARN] Browser/page was closed during fallback navigation, " "continuing with current browser state."
             )
             return "target_closed"
         if is_timeout_error(exc):
@@ -214,7 +203,9 @@ async def goto_with_fallback(page: Any, url: str) -> str:
         raise
 
 
-async def wait_for_login_confirmation(page: Any, url: str, input_func: Any = input, *, auto_wait_seconds: int = 0) -> None:
+async def wait_for_login_confirmation(
+    page: Any, url: str, input_func: Any = input, *, auto_wait_seconds: int = 0
+) -> None:
     if auto_wait_seconds > 0:
         # 自动等待模式：不阻塞等待 Enter，直接 sleep 指定秒数
         nav_task = asyncio.create_task(goto_with_fallback(page, url))
