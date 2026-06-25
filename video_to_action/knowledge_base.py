@@ -316,5 +316,136 @@ class KnowledgeBase:
                 "platform_stats": [dict(row) for row in platform_stats],
             }
 
+    def get_videos(self, limit: int = 50, offset: int = 0) -> list[dict]:
+        """
+        获取视频列表（分页）。
+        
+        Args:
+            limit: 返回记录数限制
+            offset: 偏移量
+            
+        Returns:
+            视频列表
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM videos ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_video(self, video_id: int) -> Optional[dict]:
+        """
+        获取视频详情（包含关联工具）。
+        
+        Args:
+            video_id: 视频 ID
+            
+        Returns:
+            视频详情字典，如果不存在则返回 None
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM videos WHERE id = ?", (video_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return None
+            
+            video = dict(row)
+            
+            # 获取关联的工具
+            video["tools"] = self.get_video_tools(video_id)
+            
+            # 解析 analysis_result
+            if video.get("analysis_result"):
+                video["analysis_result"] = json.loads(video["analysis_result"])
+            
+            return video
+
+    def get_tools(self, limit: int = 50, offset: int = 0) -> list[dict]:
+        """
+        获取工具列表（分页）。
+        
+        Args:
+            limit: 返回记录数限制
+            offset: 偏移量
+            
+        Returns:
+            工具列表
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM tools ORDER BY name LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+            tools = []
+            for row in cursor.fetchall():
+                tool = dict(row)
+                # 解析 JSON 字段
+                for field in ["install_commands", "config_steps", "warnings", "alternatives"]:
+                    if tool.get(field):
+                        tool[field] = json.loads(tool[field])
+                tools.append(tool)
+            return tools
+
+    def get_tool(self, tool_id: int) -> Optional[dict]:
+        """
+        获取工具详情（包含使用该工具的视频）。
+        
+        Args:
+            tool_id: 工具 ID
+            
+        Returns:
+            工具详情字典，如果不存在则返回 None
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute("SELECT * FROM tools WHERE id = ?", (tool_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return None
+            
+            tool = dict(row)
+            
+            # 解析 JSON 字段
+            for field in ["install_commands", "config_steps", "warnings", "alternatives"]:
+                if tool.get(field):
+                    tool[field] = json.loads(tool[field])
+            
+            # 获取使用此工具的视频
+            cursor = conn.execute(
+                """SELECT v.* FROM videos v
+                   JOIN video_tools vt ON v.id = vt.video_id
+                   WHERE vt.tool_id = ?""",
+                (tool_id,)
+            )
+            tool["videos"] = [dict(row) for row in cursor.fetchall()]
+            
+            return tool
+
+    def get_videos_count(self) -> int:
+        """
+        获取视频总数。
+        
+        Returns:
+            视频总数
+        """
+        with self._connect() as conn:
+            return conn.execute("SELECT COUNT(*) FROM videos").fetchone()[0]
+
+    def get_tools_count(self) -> int:
+        """
+        获取工具总数。
+        
+        Returns:
+            工具总数
+        """
+        with self._connect() as conn:
+            return conn.execute("SELECT COUNT(*) FROM tools").fetchone()[0]
+
     def close(self):
         """兼容接口：连接在每次操作后已自动关闭，无需手动调用。"""
