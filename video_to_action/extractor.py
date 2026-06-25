@@ -75,7 +75,21 @@ class Extractor:
 
     def transcribe(self, audio_path: Path) -> list[dict]:
         """使用 faster-whisper 将音频转写为带时间戳的文本片段。"""
+        import os
         from faster_whisper import WhisperModel
+
+        # 自动设置 HuggingFace 镜像（解决国内网络连接问题）
+        if not os.environ.get("HF_ENDPOINT"):
+            # 检测是否在国内环境（简单判断：尝试连接 huggingface.co 是否超时）
+            try:
+                import socket
+                socket.create_connection(("huggingface.co", 443), timeout=3)
+                # 连接成功，使用官方源
+                os.environ["HF_ENDPOINT"] = "https://huggingface.co"
+            except (OSError, socket.timeout):
+                # 连接失败，使用国内镜像
+                os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+                print(f"⚡ 检测到网络连接问题，已自动切换到 HuggingFace 镜像：{os.environ['HF_ENDPOINT']}")
 
         model_name = self.config.get("transcription", {}).get("model", "base")
         device = self._detect_device()
