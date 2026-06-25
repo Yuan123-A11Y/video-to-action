@@ -9,7 +9,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+import yt_dlp
 from playwright.sync_api import sync_playwright
+from rich.progress import BarColumn, DownloadColumn, Progress, TransferSpeedColumn
 
 from video_to_action.utils import detect_platform
 
@@ -591,6 +593,225 @@ class YtDlpDownloader:
                 return candidate.resolve()
         return fallback_path
 
+    def _create_progress_bar(self) -> Progress:
+        """创建 rich 进度条组件。
+
+        Returns:
+            配置好的 Progress 对象，显示任务描述、进度条、百分比、下载量和速度。
+        """
+        return Progress(
+            "[bold blue]{task.description}",
+            BarColumn(),
+            "[progress.percentage]{task.percentage:>3.0f}%",
+            DownloadColumn(),
+            TransferSpeedColumn(),
+        )
+
+    def _get_ydl_opts(self, output_path: Path) -> dict:
+        """构造 yt-dlp Python API 选项字典。
+
+        Args:
+            output_path: 视频保存路径模板。
+
+        Returns:
+            yt-dlp 选项字典，包含格式、请求头、Cookie 等配置。
+        """
+        # 获取默认 User-Agent
+        default_user_agent = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/126.0.0.0 Safari/537.36"
+        )
+
+        # 合并全局与平台级配置（使用第一个 URL 作为示例，实际应在 download 方法中传入）
+        # 此处返回基础配置，Cookie/Header 需在调用处根据 URL 补充
+        ydl_opts = {
+            "format": "best[ext=mp4]/best",
+            "outtmpl": str(output_path),
+            "no_warnings": True,
+            "no_check_certificates": True,
+            "newline": True,
+            "user_agent": default_user_agent,
+        }
+        return ydl_opts
+
+    def _build_ydl_opts(self, url: str, output_path: Path) -> dict:
+        """根据 URL 和输出路径构造完整的 yt-dlp 选项。
+
+        Args:
+            url: 视频页面 URL，用于推断平台和合并配置。
+            output_path: 视频保存路径模板。
+
+        Returns:
+            完整的 yt-dlp 选项字典。
+        """
+        ydl_opts = self._get_ydl_opts(output_path)
+
+        # 合并平台级 Headers 和 Cookies
+        headers, cookies = self._platform_settings(url)
+
+        # 设置请求头
+        merged_headers = {"User-Agent": ydl_opts.get("user_agent", "")}
+        merged_headers.update(headers)
+        http_headers = {}
+        for key, value in merged_headers.items():
+            http_headers[key] = value
+        ydl_opts["http_headers"] = http_headers
+
+        # 设置 Cookie
+        raw_cookies = cookies.get("raw") or {}
+        browser = cookies.get("browser")
+        cookie_file = cookies.get("file")
+
+        # 写入原始 Cookie 文件
+        raw_cookie_path = self._write_raw_cookies_file(url, raw_cookies)
+        if raw_cookie_path:
+            ydl_opts["cookiefile"] = str(raw_cookie_path)
+        elif browser:
+            ydl_opts["cookiesfrombrowser"] = (browser,)
+        elif cookie_file:
+            ydl_opts["cookiefile"] = str(Path(cookie_file).expanduser())
+
+        # 启用断点续传
+        ydl_opts["continuedl"] = True
+
+        # 添加进度钩子（由调用方覆盖）
+        ydl_opts["progress_hooks"] = []
+
+        return ydl_opts
+
+    def _is_complete_file(self, file_path: Path) -> bool:
+        """检查文件是否完整。
+
+        简单检查文件大小是否大于 1MB，避免误判。
+        对于更严格的检查，可扩展为校验文件哈希或元数据。
+
+        Args:
+            file_path: 待检查的文件路径。
+
+        Returns:
+            文件存在且大小超过 1MB 时返回 True。
+        """
+        if not file_path.exists():
+            return False
+        return file_path.stat().st_size > 1024 * 1024
+
+    def download(self, url: str, filename: str | None = None) -> dict:
+        """使用 yt-dlp Python API 下载指定 URL 的视频，支持进度显示和断点续传。
+
+        Args:
+            url: 视频页面 URL。
+            filename: 输出文件名模板；为空时自动生成 "平台_%(id)s.%(ext)s"。
+
+        Returns:
+            包含下载结果的字典：success、platform、method、output_path、stdout、stderr。
+        """
+        platform = detect_video_platform(url)
+        if filename is None:
+            filename = f"{platform}_%(id)s.%(ext)s"
+        output_path = self.output_dir / filename
+
+        # 断点续传：检查目标文件是否已存在
+        # 注意：由于 yt-dlp 的命名模板，实际文件名可能包含视频 ID
+        # 此处做简单检查：查找输出目录中匹配平台的已下载文件
+        existing_files = list(self.output_dir.glob(f"{platform}_*"))
+        if existing_files:
+            # 按修改时间排序，取最新的完整文件
+            existing_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            for candidate in existing_files:
+                if candidate.suffix.lower() in {".mp4", ".webm", ".mkv", ".mov"}:
+                    if self._is_complete_file(candidate):
+                        return {
+                            "success": True,
+                            "platform": platform,
+                            "method": "yt-dlp",
+                            "output_path": str(candidate),
+                            "stdout": "文件已存在且完整，跳过下载",
+                            "stderr": "",
+                        }
+
+        # 使用 rich 进度条下载
+        with self._create_progress_bar() as progress:
+            task = progress.add_task("[cyan]下载视频...", total=0)
+
+            def progress_hook(d: dict) -> None:
+                """yt-dlp 进度回调函数。"""
+                if d["status"] == "downloading":
+                    # 首次收到数据，设置总大小
+                    if task.total == 0:
+                        total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate", 0)
+                        progress.update(task.id, total=total_bytes)
+                    downloaded = d.get("downloaded_bytes", 0)
+                    progress.update(task.id, completed=downloaded)
+                elif d["status"] == "finished":
+                    progress.update(task.id, completed=task.total or 1, total=task.total or 1)
+
+            # 构造 yt-dlp 选项
+            ydl_opts = self._build_ydl_opts(url, output_path)
+            ydl_opts["progress_hooks"] = [progress_hook]
+
+            # 添加 after_move 钩子以获取真实文件路径（通过 print 输出后解析）
+            ydl_opts["print"] = [{"after_move": "filepath"}]
+
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+            except Exception as e:
+                return {
+                    "success": False,
+                    "platform": platform,
+                    "method": "yt-dlp",
+                    "output_path": "",
+                    "stdout": "",
+                    "stderr": str(e),
+                }
+
+        # 下载完成后，查找实际输出文件
+        # yt-dlp 会将文件路径输出到 stdout，但 Python API 中需通过其他方式获取
+        # 此处采用回退策略：查找输出目录中最新创建的文件
+        real_path = self._find_latest_downloaded_file(platform, output_path)
+        return {
+            "success": real_path.exists(),
+            "platform": platform,
+            "method": "yt-dlp",
+            "output_path": str(real_path),
+            "stdout": "下载完成" if real_path.exists() else "",
+            "stderr": "" if real_path.exists() else "未找到下载的文件",
+        }
+
+    def _find_latest_downloaded_file(self, platform: str, fallback_path: Path) -> Path:
+        """查找最新下载的视频文件。
+
+        Args:
+            platform: 视频平台名称，用于筛选文件。
+            fallback_path: 回退路径模板。
+
+        Returns:
+            最新视频文件的绝对路径；未找到时返回 fallback_path。
+        """
+        # 优先查找匹配平台的文件
+        candidates = sorted(
+            self.output_dir.glob(f"{platform}_*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for candidate in candidates:
+            if candidate.suffix.lower() in {".mp4", ".webm", ".mkv", ".mov", ".avi"}:
+                if candidate.exists():
+                    return candidate.resolve()
+
+        # 回退：查找输出目录中所有视频文件
+        all_candidates = sorted(
+            self.output_dir.glob("*.*"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for candidate in all_candidates:
+            if candidate.suffix.lower() in {".mp4", ".webm", ".mkv", ".mov", ".avi"}:
+                return candidate.resolve()
+
+        return fallback_path
+
 
 class GreenVideoDownloader:
     """基于 GreenVideo 网站的备选视频下载器。"""
@@ -768,13 +989,58 @@ class GreenVideoDownloader:
             }
 
 
+def _check_existing_download(url: str, output_dir: Path) -> dict | None:
+    """检查是否已存在完整下载文件，支持断点续传预检查。
+
+    根据 URL 平台查找输出目录中已有的视频文件，若存在完整文件则直接返回，
+    避免重复下载。
+
+    Args:
+        url: 视频页面 URL，用于推断平台。
+        output_dir: 视频输出目录。
+
+    Returns:
+        若找到完整文件，返回成功结果字典；否则返回 None。
+    """
+    platform = detect_video_platform(url)
+    video_suffixes = {".mp4", ".webm", ".mkv", ".mov", ".avi"}
+
+    # 按修改时间降序查找匹配平台的最新完整文件
+    candidates = sorted(
+        output_dir.glob(f"{platform}_*"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True,
+    )
+    for candidate in candidates:
+        if candidate.suffix.lower() in video_suffixes and candidate.exists():
+            file_size = candidate.stat().st_size
+            if file_size > 1024 * 1024:  # 大于 1MB 视为完整
+                return {
+                    "success": True,
+                    "platform": platform,
+                    "method": "cached",
+                    "output_path": str(candidate.resolve()),
+                    "stdout": f"找到已下载的文件（{file_size // 1024 // 1024}MB），跳过下载",
+                    "stderr": "",
+                }
+
+    return None
+
+
 def download_video(url: str, config: dict, output_dir: Path) -> dict:
-    """组合主方案和备选方案下载视频。
+    """组合主方案和备选方案下载视频，支持断点续传。
 
     对于抖音 URL，优先使用 douyin-downloader；
     其他平台或抖音失败时，回退到 yt-dlp；
     最后尝试 GreenVideo（如配置）。
+
+    断点续传：若输出目录中已存在完整文件，则直接返回，避免重复下载。
     """
+    # 断点续传预检查：若已存在完整文件，直接返回
+    existing = _check_existing_download(url, output_dir)
+    if existing:
+        return existing
+
     platform = detect_video_platform(url)
     failure_messages: list[str] = []
 
