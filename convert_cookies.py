@@ -18,19 +18,20 @@ def convert_json_to_netscape(json_file: str, netscape_file: str):
         f.write("# Usage: yt-dlp --cookies cookies.txt\n")
         f.write("\n")
         
-        # B站Cookie的域名
-        domains = [
-            (".bilibili.com", "TRUE"),
-            ("www.bilibili.com", "FALSE"),
-        ]
+        # B站Cookie的域名（泛域名以.开头）
+        domain = ".bilibili.com"
+        domain_specified = "TRUE"  # 域名以.开头，所以是TRUE
+        path = "/"
+        secure = "FALSE"
+        expiration = "0"  # 会话Cookie
         
         for key, value in cookies.items():
-            # 选择合适的域名
-            domain = ".bilibili.com"  # 默认使用泛域名
-            secure = "FALSE"
-            expiration = "0"  # 会话Cookie
+            # 转义值中的特殊字符（如果有）
+            if value is None:
+                continue
             
-            f.write(f"{domain}\t{secure}\t/\tFALSE\t{expiration}\t{key}\t{value}\n")
+            # 写入Netscape格式（7个字段，用\t分隔）
+            f.write(f"{domain}\t{domain_specified}\t{path}\t{secure}\t{expiration}\t{key}\t{value}\n")
     
     print(f"✅ 已转换 {len(cookies)} 个Cookie到Netscape格式：{netscape_file}")
 

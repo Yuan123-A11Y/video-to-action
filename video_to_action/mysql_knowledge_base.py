@@ -1,8 +1,8 @@
 """
 MySQL 知识库模块 - 使用 MySQL 替代 SQLite。
 
-提供与 KnowledgeBase 相同的接口，但使用 MySQL 数据库。
-可以通过环境变量或配置文件切换数据库类型。
+提供与 KnowledgeBase 完全相同的接口，但使用 MySQL 数据库。
+可以通过环境变量或构造函数参数切换数据库类型。
 """
 
 import json
@@ -23,37 +23,55 @@ load_dotenv()
 
 
 class MySQLKnowledgeBase:
-    """视频知识库，基于 MySQL 存储分析结果。"""
+    """视频知识库，基于 MySQL 存储分析结果。
+    
+    提供与 KnowledgeBase (SQLite) 完全相同的接口。
+    """
 
-    def __init__(self, use_mysql: Optional[bool] = None):
+    def __init__(self, use_mysql: Optional[bool] = None, **kwargs):
         """初始化知识库。
         
         Args:
-            use_mysql: 是否使用 MySQL。如果为 None，则从环境变量读取。
-                       环境变量 USE_MYSQL=true 时使用 MySQL，否则使用 SQLite。
+            use_mysql: 是否使用 MySQL。
+                - None: 从环境变量 USE_MYSQL 读取
+                - True/False: 强制使用/不使用 MySQL
+            **kwargs: MySQL 连接参数（host, port, user, password, database）
         """
         self.use_mysql = use_mysql if use_mysql is not None else \
             os.getenv("USE_MYSQL", "false").lower() == "true"
         
         if self.use_mysql:
             self.mysql_config = {
-                "host": os.getenv("MYSQL_HOST", "localhost"),
-                "port": int(os.getenv("MYSQL_PORT", "3306")),
-                "user": os.getenv("MYSQL_USER", "root"),
-                "password": os.getenv("MYSQL_PASSWORD", ""),
-                "database": os.getenv("MYSQL_DATABASE", "video_to_action"),
+                "host": kwargs.get("host") or os.getenv("MYSQL_HOST", "localhost"),
+                "port": kwargs.get("port") or int(os.getenv("MYSQL_PORT", "3306")),
+                "user": kwargs.get("user") or os.getenv("MYSQL_USER", "root"),
+                "password": kwargs.get("password") or os.getenv("MYSQL_PASSWORD", ""),
+                "database": kwargs.get("database") or os.getenv("MYSQL_DATABASE", "video_to_action"),
                 "charset": "utf8mb4",
+                "cursorclass": pymysql.cursors.DictCursor,
             }
-            self._init_mysql_db()
+            self._test_connection()
+            logger.info(f"✅ MySQL 数据库连接成功: {self.mysql_config['host']}:{self.mysql_config['port']}")
         else:
             # 回退到 SQLite
             from video_to_action.knowledge_base import KnowledgeBase
             self.sqlite_kb = KnowledgeBase()
-            logger.info("使用 SQLite 数据库")
+            logger.info("✅ 使用 SQLite 数据库")
+
+    def _test_connection(self):
+        """测试 MySQL 连接。"""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+        except Exception as e:
+            logger.error(f"❌ MySQL 数据库连接失败: {e}")
+            raise
 
     @contextmanager
     def _get_connection(self):
-        """获取 MySQL 连接。"""
+        """获取 MySQL 连接（上下文管理器）。"""
         conn = pymysql.connect(**self.mysql_config)
         try:
             yield conn
@@ -63,18 +81,6 @@ class MySQLKnowledgeBase:
             raise
         finally:
             conn.close()
-
-    def _init_mysql_db(self):
-        """初始化 MySQL 数据库（表已通过 schema.sql 创建）。"""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT 1 FROM videos LIMIT 1")
-                cursor.close()
-            logger.info("MySQL 数据库连接成功")
-        except Exception as e:
-            logger.error(f"MySQL 数据库连接失败: {e}")
-            raise
 
     def add_video_analysis(
         self,
@@ -96,7 +102,7 @@ class MySQLKnowledgeBase:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             
-            # 插入视频记录
+            # 插入视频记录（使用 ON DUPLICATE KEY UPDATE 处理重复）
             cursor.execute(
                 """INSERT INTO videos 
                    (url, platform, title, theme, summary, transcription_text, analysis_result)
@@ -118,13 +124,15 @@ class MySQLKnowledgeBase:
                     json.dumps(analysis_result, ensure_ascii=False),
                 ),
             )
-            video_id = cursor.lastrowid
             
-            # 如果没有 lastrowid（因为是 ON DUPLICATE KEY UPDATE），则查询
-            if video_id == 0:
+            # 获取 video_id（可能是新插入的，也可能是已存在的）
+            if cursor.lastrowid > 0:
+                video_id = cursor.lastrowid
+            else:
+                # 查询已存在的记录
                 cursor.execute("SELECT id FROM videos WHERE url_hash = SHA2(%s, 256)", (url,))
                 row = cursor.fetchone()
-                video_id = row[0] if row else 0
+                video_id = row["id"] if row else 0
 
             # 插入工具记录
             tools = analysis_result.get("tools", [])
@@ -135,6 +143,7 @@ class MySQLKnowledgeBase:
                     (video_id, tool_id),
                 )
 
+            cursor.close()
             return video_id
 
     def _add_or_get_tool(self, conn, tool: dict) -> int:
@@ -148,7 +157,7 @@ class MySQLKnowledgeBase:
 
         if row:
             cursor.close()
-            return row[0]
+            return row["id"]
 
         cursor.execute(
             """INSERT INTO tools 
@@ -173,72 +182,140 @@ class MySQLKnowledgeBase:
         return tool_id
 
     def search_videos(self, query: str, limit: int = 10) -> list:
-        """搜索视频。"""
+        """搜索视频（基于 LIKE 模糊匹配，与 SQLite 版本兼容）。"""
         if not self.use_mysql:
             return self.sqlite_kb.search_videos(query, limit)
 
         with self._get_connection() as conn:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor = conn.cursor()
+            pattern = f"%{query}%"
             cursor.execute(
                 """SELECT * FROM videos 
-                   WHERE MATCH(title) AGAINST (%s IN NATURAL LANGUAGE MODE)
-                      OR MATCH(transcription_text) AGAINST (%s IN NATURAL LANGUAGE MODE)
-                   LIMIT %s""",
-                (query, query, limit)
+                   WHERE title LIKE %s OR theme LIKE %s OR summary LIKE %s
+                   ORDER BY created_at DESC LIMIT %s""",
+                (pattern, pattern, pattern, limit)
             )
             results = cursor.fetchall()
             cursor.close()
             return results
 
     def search_tools(self, query: str, limit: int = 10) -> list:
-        """搜索工具。"""
+        """搜索工具（基于 LIKE 模糊匹配）。"""
         if not self.use_mysql:
             return self.sqlite_kb.search_tools(query, limit)
 
         with self._get_connection() as conn:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor = conn.cursor()
+            pattern = f"%{query}%"
             cursor.execute(
                 """SELECT * FROM tools 
-                   WHERE MATCH(name) AGAINST (%s IN NATURAL LANGUAGE MODE)
-                      OR MATCH(purpose) AGAINST (%s IN NATURAL LANGUAGE MODE)
+                   WHERE name LIKE %s OR purpose LIKE %s
                    LIMIT %s""",
-                (query, query, limit)
+                (pattern, pattern, limit)
             )
             results = cursor.fetchall()
+            # 解析 JSON 字段
+            for tool in results:
+                for field in ["install_commands", "config_steps", "usage_examples", "warnings", "alternatives"]:
+                    if tool.get(field):
+                        try:
+                            tool[field] = json.loads(tool[field])
+                        except:
+                            pass
             cursor.close()
             return results
 
-    def get_video_count(self) -> int:
-        """获取视频总数。"""
+    def get_video_by_url(self, url: str) -> Optional[dict]:
+        """根据URL获取视频分析结果。"""
         if not self.use_mysql:
-            return self.sqlite_kb.get_video_count()
+            return self.sqlite_kb.get_video_by_url(url)
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM videos")
-            count = cursor.fetchone()[0]
+            cursor.execute("SELECT * FROM videos WHERE url_hash = SHA2(%s, 256)", (url,))
+            row = cursor.fetchone()
             cursor.close()
-            return count
+            if row and row.get("analysis_result"):
+                try:
+                    row["analysis_result"] = json.loads(row["analysis_result"])
+                except:
+                    pass
+            return row
 
-    def get_tool_count(self) -> int:
-        """获取工具总数。"""
+    def get_tool_by_name(self, name: str) -> Optional[dict]:
+        """根据工具名称获取工具信息。"""
         if not self.use_mysql:
-            return self.sqlite_kb.get_tool_count()
+            return self.sqlite_kb.get_tool_by_name(name)
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM tools")
-            count = cursor.fetchone()[0]
+            cursor.execute("SELECT * FROM tools WHERE name_normalized = LOWER(%s)", (name.lower(),))
+            row = cursor.fetchone()
             cursor.close()
-            return count
+            if row:
+                for field in ["install_commands", "config_steps", "usage_examples", "warnings", "alternatives"]:
+                    if row.get(field):
+                        try:
+                            row[field] = json.loads(row[field])
+                        except:
+                            pass
+            return row
 
-    def get_all_videos(self, limit: int = 100, offset: int = 0) -> list:
-        """获取所有视频。"""
+    def get_video_tools(self, video_id: int) -> list:
+        """获取视频关联的工具列表。"""
         if not self.use_mysql:
-            return self.sqlite_kb.get_all_videos(limit, offset)
+            return self.sqlite_kb.get_video_tools(video_id)
 
         with self._get_connection() as conn:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT t.* FROM tools t
+                   JOIN video_tools vt ON t.id = vt.tool_id
+                   WHERE vt.video_id = %s""",
+                (video_id,)
+            )
+            results = cursor.fetchall()
+            for tool in results:
+                for field in ["install_commands", "config_steps", "usage_examples", "warnings", "alternatives"]:
+                    if tool.get(field):
+                        try:
+                            tool[field] = json.loads(tool[field])
+                        except:
+                            pass
+            cursor.close()
+            return results
+
+    def get_statistics(self) -> dict:
+        """获取知识库统计信息。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_statistics()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT COUNT(*) as count FROM videos")
+            video_count = cursor.fetchone()["count"]
+            
+            cursor.execute("SELECT COUNT(*) as count FROM tools")
+            tool_count = cursor.fetchone()["count"]
+            
+            cursor.execute("SELECT platform, COUNT(*) as count FROM videos GROUP BY platform")
+            platform_stats = cursor.fetchall()
+            
+            cursor.close()
+            return {
+                "video_count": video_count,
+                "tool_count": tool_count,
+                "platform_stats": platform_stats,
+            }
+
+    def get_videos(self, limit: int = 50, offset: int = 0) -> list:
+        """获取视频列表（分页）。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_videos(limit, offset)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM videos ORDER BY created_at DESC LIMIT %s OFFSET %s",
                 (limit, offset)
@@ -247,23 +324,213 @@ class MySQLKnowledgeBase:
             cursor.close()
             return results
 
-    def get_all_tools(self, limit: int = 100, offset: int = 0) -> list:
-        """获取所有工具。"""
+    def get_video(self, video_id: int) -> Optional[dict]:
+        """获取视频详情（包含关联工具）。"""
         if not self.use_mysql:
-            return self.sqlite_kb.get_all_tools(limit, offset)
+            return self.sqlite_kb.get_video(video_id)
 
         with self._get_connection() as conn:
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM videos WHERE id = %s", (video_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                cursor.close()
+                return None
+            
+            # 获取关联的工具
             cursor.execute(
-                "SELECT * FROM tools ORDER BY created_at DESC LIMIT %s OFFSET %s",
+                """SELECT t.* FROM tools t
+                   JOIN video_tools vt ON t.id = vt.tool_id
+                   WHERE vt.video_id = %s""",
+                (video_id,)
+            )
+            row["tools"] = cursor.fetchall()
+            
+            # 解析 analysis_result
+            if row.get("analysis_result"):
+                try:
+                    row["analysis_result"] = json.loads(row["analysis_result"])
+                except:
+                    pass
+            
+            cursor.close()
+            return row
+
+    def get_tools(self, limit: int = 50, offset: int = 0) -> list:
+        """获取工具列表（分页）。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_tools(limit, offset)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM tools ORDER BY name LIMIT %s OFFSET %s",
                 (limit, offset)
             )
             results = cursor.fetchall()
+            
+            # 解析 JSON 字段
+            for tool in results:
+                for field in ["install_commands", "config_steps", "usage_examples", "warnings", "alternatives"]:
+                    if tool.get(field):
+                        try:
+                            tool[field] = json.loads(tool[field])
+                        except:
+                            pass
+            
             cursor.close()
             return results
+
+    def get_tool(self, tool_id: int) -> Optional[dict]:
+        """获取工具详情（包含使用该工具的视频）。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_tool(tool_id)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM tools WHERE id = %s", (tool_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                cursor.close()
+                return None
+            
+            # 解析 JSON 字段
+            for field in ["install_commands", "config_steps", "usage_examples", "warnings", "alternatives"]:
+                if row.get(field):
+                    try:
+                        row[field] = json.loads(row[field])
+                    except:
+                        pass
+            
+            # 获取使用此工具的视频
+            cursor.execute(
+                """SELECT v.* FROM videos v
+                   JOIN video_tools vt ON v.id = vt.video_id
+                   WHERE vt.tool_id = %s""",
+                (tool_id,)
+            )
+            row["videos"] = cursor.fetchall()
+            
+            cursor.close()
+            return row
+
+    def get_videos_count(self) -> int:
+        """获取视频总数。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_videos_count()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM videos")
+            count = cursor.fetchone()["count"]
+            cursor.close()
+            return count
+
+    def get_tools_count(self) -> int:
+        """获取工具总数。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.get_tools_count()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM tools")
+            count = cursor.fetchone()["count"]
+            cursor.close()
+            return count
+
+    def delete_video(self, video_id: int) -> bool:
+        """删除视频（同时删除 video_tools 关联记录）。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.delete_video(video_id)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # 先删除关联记录
+            cursor.execute("DELETE FROM video_tools WHERE video_id = %s", (video_id,))
+            # 再删除视频
+            cursor.execute("DELETE FROM videos WHERE id = %s", (video_id,))
+            deleted = cursor.rowcount > 0
+            cursor.close()
+            return deleted
+
+    def update_video(self, video_id: int, **kwargs) -> bool:
+        """更新视频信息。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.update_video(video_id, **kwargs)
+
+        # 构建 UPDATE 语句
+        allowed_fields = ["title", "theme", "summary", "transcription_text", "analysis_result"]
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                updates.append(f"{key} = %s")
+                params.append(json.dumps(value, ensure_ascii=False) if key == "analysis_result" else value)
+        
+        if not updates:
+            return False
+        
+        params.append(video_id)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"UPDATE videos SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                params
+            )
+            updated = cursor.rowcount > 0
+            cursor.close()
+            return updated
+
+    def delete_tool(self, tool_id: int) -> bool:
+        """删除工具（同时删除 video_tools 关联记录）。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.delete_tool(tool_id)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # 先删除关联记录
+            cursor.execute("DELETE FROM video_tools WHERE tool_id = %s", (tool_id,))
+            # 再删除工具
+            cursor.execute("DELETE FROM tools WHERE id = %s", (tool_id,))
+            deleted = cursor.rowcount > 0
+            cursor.close()
+            return deleted
+
+    def update_tool(self, tool_id: int, **kwargs) -> bool:
+        """更新工具信息。"""
+        if not self.use_mysql:
+            return self.sqlite_kb.update_tool(tool_id, **kwargs)
+
+        # 构建 UPDATE 语句
+        allowed_fields = ["name", "category", "purpose", "install_commands", "config_steps", 
+                         "usage_examples", "warnings", "alternatives", "is_paid", "needs_credential"]
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                updates.append(f"{key} = %s")
+                if key in ["install_commands", "config_steps", "usage_examples", "alternatives"]:
+                    params.append(json.dumps(value, ensure_ascii=False))
+                else:
+                    params.append(value)
+        
+        if not updates:
+            return False
+        
+        params.append(tool_id)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                f"UPDATE tools SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                params
+            )
+            updated = cursor.rowcount > 0
+            cursor.close()
+            return updated
 
     def close(self):
         """关闭数据库连接（兼容接口）。"""
         if not self.use_mysql:
-            # SQLite 连接在每个操作后立即关闭，无需额外操作
-            pass
+            pass  # SQLite 连接在每个操作后立即关闭

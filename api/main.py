@@ -16,7 +16,6 @@ from video_to_action.analyzer_v2 import AnalyzerV2
 from video_to_action.config import get_output_dir, load_config
 from video_to_action.downloader import download_video
 from video_to_action.extractor import Extractor
-from video_to_action.knowledge_base import KnowledgeBase
 from api.task_manager import TaskManager
 
 app = FastAPI(title="Video-to-Action API", version="1.0.0")
@@ -33,21 +32,11 @@ app.add_middleware(
 # 全局配置
 config = load_config()
 
-# 根据配置选择数据库类型
-db_config = config.get("database", {})
-if db_config.get("type") == "mysql":
-    from video_to_action.mysql_knowledge_base import MySQLKnowledgeBase
-    kb = MySQLKnowledgeBase(
-        host=db_config.get("host", "localhost"),
-        port=db_config.get("port", 3306),
-        user=db_config.get("user", "root"),
-        password=db_config.get("password", ""),
-        database=db_config.get("database", "video_to_action"),
-    )
-    print("✅ 使用 MySQL 数据库")
-else:
-    kb = KnowledgeBase()
-    print("✅ 使用 SQLite 数据库")
+# 根据环境变量选择数据库类型
+# 在 .env 文件中设置 USE_MYSQL=true 来启用 MySQL
+from video_to_action.mysql_knowledge_base import MySQLKnowledgeBase
+kb = MySQLKnowledgeBase()
+print(f"✅ 数据库类型: {'MySQL' if kb.use_mysql else 'SQLite'}")
 
 # 任务管理器（替换原来的内存存储）
 data_dir = Path(config.get("output", {}).get("base_dir", "data"))
@@ -83,11 +72,17 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "POST /api/process": "处理视频",
+            "GET /api/tasks/{task_id}": "获取任务状态",
+            "GET /api/videos": "获取视频列表（分页）",
+            "GET /api/videos/{video_id}": "获取视频详情",
+            "PUT /api/videos/{video_id}": "更新视频信息",
+            "DELETE /api/videos/{video_id}": "删除视频",
+            "GET /api/tools": "获取工具列表（分页）",
+            "GET /api/tools/{tool_id}": "获取工具详情",
+            "PUT /api/tools/{tool_id}": "更新工具信息",
+            "DELETE /api/tools/{tool_id}": "删除工具",
             "GET /api/search": "搜索知识库",
             "GET /api/stats": "获取统计信息",
-            "GET /api/videos": "获取视频列表",
-            "GET /api/videos/{video_id}": "获取视频详情",
-            "GET /api/tools": "获取工具列表",
         },
     }
 
@@ -233,6 +228,40 @@ async def get_tool(tool_id: int):
     if not tool:
         raise HTTPException(status_code=404, detail="工具不存在")
     return tool
+
+
+# ==================== 删除/更新接口 ====================
+
+@app.delete("/api/videos/{video_id}")
+async def delete_video(video_id: int):
+    """删除视频。"""
+    if not kb.delete_video(video_id):
+        raise HTTPException(status_code=404, detail="视频不存在")
+    return {"success": True, "message": "视频已删除"}
+
+
+@app.put("/api/videos/{video_id}")
+async def update_video(video_id: int, data: dict):
+    """更新视频信息。"""
+    if not kb.update_video(video_id, **data):
+        raise HTTPException(status_code=404, detail="视频不存在或没有可更新的字段")
+    return {"success": True, "message": "视频已更新"}
+
+
+@app.delete("/api/tools/{tool_id}")
+async def delete_tool(tool_id: int):
+    """删除工具。"""
+    if not kb.delete_tool(tool_id):
+        raise HTTPException(status_code=404, detail="工具不存在")
+    return {"success": True, "message": "工具已删除"}
+
+
+@app.put("/api/tools/{tool_id}")
+async def update_tool(tool_id: int, data: dict):
+    """更新工具信息。"""
+    if not kb.update_tool(tool_id, **data):
+        raise HTTPException(status_code=404, detail="工具不存在或没有可更新的字段")
+    return {"success": True, "message": "工具已更新"}
 
 
 if __name__ == "__main__":

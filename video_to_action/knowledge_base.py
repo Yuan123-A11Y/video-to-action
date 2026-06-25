@@ -447,5 +447,106 @@ class KnowledgeBase:
         with self._connect() as conn:
             return conn.execute("SELECT COUNT(*) FROM tools").fetchone()[0]
 
+    def delete_video(self, video_id: int) -> bool:
+        """
+        删除视频（同时删除 video_tools 关联记录）。
+        
+        Args:
+            video_id: 视频 ID
+            
+        Returns:
+            是否删除成功
+        """
+        with self._connect() as conn:
+            # 先删除关联记录
+            conn.execute("DELETE FROM video_tools WHERE video_id = ?", (video_id,))
+            # 再删除视频
+            conn.execute("DELETE FROM videos WHERE id = ?", (video_id,))
+            return conn.total_changes > 0
+
+    def update_video(self, video_id: int, **kwargs) -> bool:
+        """
+        更新视频信息。
+        
+        Args:
+            video_id: 视频 ID
+            **kwargs: 要更新的字段（title, theme, summary, transcription_text, analysis_result）
+            
+        Returns:
+            是否更新成功
+        """
+        # 构建 UPDATE 语句
+        allowed_fields = ["title", "theme", "summary", "transcription_text", "analysis_result"]
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                updates.append(f"{key} = ?")
+                params.append(json.dumps(value, ensure_ascii=False) if key == "analysis_result" else value)
+        
+        if not updates:
+            return False
+        
+        params.append(video_id)
+        with self._connect() as conn:
+            conn.execute(
+                f"UPDATE videos SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                params
+            )
+            return conn.total_changes > 0
+
+    def delete_tool(self, tool_id: int) -> bool:
+        """
+        删除工具（同时删除 video_tools 关联记录）。
+        
+        Args:
+            tool_id: 工具 ID
+            
+        Returns:
+            是否删除成功
+        """
+        with self._connect() as conn:
+            # 先删除关联记录
+            conn.execute("DELETE FROM video_tools WHERE tool_id = ?", (tool_id,))
+            # 再删除工具
+            conn.execute("DELETE FROM tools WHERE id = ?", (tool_id,))
+            return conn.total_changes > 0
+
+    def update_tool(self, tool_id: int, **kwargs) -> bool:
+        """
+        更新工具信息。
+        
+        Args:
+            tool_id: 工具 ID
+            **kwargs: 要更新的字段（name, category, purpose, install_commands, config_steps, 
+                      usage_examples, warnings, alternatives, is_paid, needs_credential）
+            
+        Returns:
+            是否更新成功
+        """
+        # 构建 UPDATE 语句
+        allowed_fields = ["name", "category", "purpose", "install_commands", "config_steps", 
+                         "usage_examples", "warnings", "alternatives", "is_paid", "needs_credential"]
+        updates = []
+        params = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                updates.append(f"{key} = ?")
+                if key in ["install_commands", "config_steps", "usage_examples", "alternatives"]:
+                    params.append(json.dumps(value, ensure_ascii=False))
+                else:
+                    params.append(value)
+        
+        if not updates:
+            return False
+        
+        params.append(tool_id)
+        with self._connect() as conn:
+            conn.execute(
+                f"UPDATE tools SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                params
+            )
+            return conn.total_changes > 0
+
     def close(self):
         """兼容接口：连接在每次操作后已自动关闭，无需手动调用。"""
