@@ -6,20 +6,20 @@ from video_to_action.cli import _format_trae_prompt, parse_arguments
 
 def test_parse_arguments():
     """测试默认参数解析。"""
-    args = parse_arguments(["https://v.douyin.com/abc123"])
+    args = parse_arguments(["process", "https://v.douyin.com/abc123"])
     assert args.url == "https://v.douyin.com/abc123"
     assert args.level == "auto"
 
 
 def test_parse_arguments_with_level():
     """测试指定 level 参数。"""
-    args = parse_arguments(["https://v.douyin.com/abc123", "--level", "observe"])
+    args = parse_arguments(["process", "https://v.douyin.com/abc123", "--level", "observe"])
     assert args.level == "observe"
 
 
 def test_parse_arguments_with_extract_level():
     """测试 extract 模式参数解析。"""
-    args = parse_arguments(["https://v.douyin.com/abc123", "--level", "extract"])
+    args = parse_arguments(["process", "https://v.douyin.com/abc123", "--level", "extract"])
     assert args.level == "extract"
 
 
