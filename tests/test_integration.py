@@ -34,5 +34,5 @@ def test_cli_observe_mode_short_circuits_execution():
         }
         MockAnalyzer.return_value = mock_analyzer
 
-        exit_code = main(["https://v.douyin.com/abc123", "--level", "observe"])
+        exit_code = main(["process", "https://v.douyin.com/abc123", "--level", "observe"])
         assert exit_code == 0
