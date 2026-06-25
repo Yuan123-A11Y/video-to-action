@@ -1,10 +1,43 @@
 """命令执行与安装模块。"""
 
+import logging
 import re
 import subprocess
 from pathlib import Path
 
 from video_to_action.utils import is_dangerous_command
+
+logger = logging.getLogger(__name__)
+
+# 已知的交互式工具（只安装，不自动执行）
+INTERACTIVE_TOOLS = {
+    "claude",
+    "cursor",
+    "codex",
+    "windsurf",
+    "github copilot",
+    "tabnine",
+    "codeium",
+}
+
+# 正确的安装命令前缀（用于校验 LLM 生成的命令是否合理）
+INSTALL_PREFIXES = {
+    "npm install",
+    "pip install",
+    "pip3 install",
+    "brew install",
+    "apt install",
+    "yum install",
+    "dnf install",
+    "choco install",
+    "winget install",
+    "conda install",
+    "cargo install",
+    "go install",
+    "curl",
+    "wget",
+    "git clone",
+}
 
 
 class Executor:
@@ -15,6 +48,8 @@ class Executor:
         self.config = config
         self.output_dir = output_dir
         self.safety = config.get("safety", {})
+        # 命令执行超时（秒），可在 config 中覆盖
+        self.timeout = self.safety.get("command_timeout", 300)
 
     def _needs_confirm(self, command: str) -> tuple[bool, str]:
         """检查命令是否需要用户确认，返回 (是否需要, 原因)。"""
@@ -45,8 +80,36 @@ class Executor:
 
         return False, ""
 
+    def _is_interactive_tool(self, command: str) -> bool:
+        """检测命令是否启动交互式工具（无法自动执行）。"""
+        cmd_lower = command.lower()
+        for tool in INTERACTIVE_TOOLS:
+            if tool in cmd_lower:
+                return True
+        return False
+
+    def _is_valid_install_command(self, command: str) -> bool:
+        """校验命令是否是合理的安装命令，而非启动/运行命令。"""
+        cmd_lower = command.lower().strip()
+        # npx 不带 install 参数时，是临时运行而非安装
+        if cmd_lower.startswith("npx "):
+            pkg = cmd_lower[4:].strip().split()[0] if len(cmd_lower) > 4 else ""
+            # npx <pkg> 是运行，npx install <pkg> 不存在（npx 不用 install）
+            # 合理的 npx 安装方式是通过 npm install -g
+            return False
+        for prefix in INSTALL_PREFIXES:
+            if cmd_lower.startswith(prefix):
+                return True
+        return False
+
     def execute(self, command: str, confirm: bool = False) -> dict:
-        """执行单条命令，先进行危险命令拦截与确认校验。"""
+        """执行单条命令，先进行危险命令拦截与确认校验。
+
+        改进点：
+        - 添加命令执行超时（防止交互式工具挂起）
+        - 检测交互式工具并跳过（返回清晰提示）
+        - 校验安装命令格式（区分安装 vs 启动）
+        """
         forbidden = self.safety.get("forbidden_keywords", [])
         if is_dangerous_command(command, forbidden):
             return {
@@ -65,15 +128,57 @@ class Executor:
                 "command": command,
             }
 
-        # 使用 GBK 编码读取输出（兼容中文 Windows）
-        # 如果解码失败，使用 UTF-8 并忽略错误
-        result = subprocess.run(
-            command,
-            shell=True,
-            capture_output=True,
-            encoding="utf-8",
-            errors="ignore"
-        )
+        # 检测交互式工具（无法自动执行，跳过并给提示）
+        if self._is_interactive_tool(command):
+            tool_name = next(
+                (t for t in INTERACTIVE_TOOLS if t in command.lower()),
+                "未知工具",
+            )
+            return {
+                "success": False,
+                "skipped": True,
+                "reason": "interactive_tool",
+                "stdout": "",
+                "stderr": (
+                    f"跳过执行：{tool_name} 是交互式工具，"
+                    f"无法在自动化流程中运行。\n"
+                    f"请手动执行安装命令后，再启动 {tool_name}。"
+                ),
+                "command": command,
+            }
+
+        # 校验命令格式（警告但不阻止，LLM 可能生成不完美命令）
+        if not self._is_valid_install_command(command):
+            logger.warning(
+                "命令可能格式不正确（非标准安装命令）：%s", command
+            )
+
+        # 执行命令（带超时）
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=self.timeout,
+            )
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"命令执行超时（{self.timeout}秒），已被终止。",
+                "command": command,
+                "timeout": True,
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "stdout": "",
+                "stderr": f"命令执行异常：{e}",
+                "command": command,
+            }
+
         return {
             "success": result.returncode == 0,
             "stdout": result.stdout,
