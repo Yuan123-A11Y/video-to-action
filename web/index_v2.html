@@ -412,7 +412,7 @@
     </div>
     
     <script>
-        const API_BASE = '';  // 相对路径，与前端同域
+        const API_BASE = '/api';  // API 路径前缀
         let allVideos = [];
         let allTools = [];
         let currentVideoPage = 1;
@@ -428,7 +428,7 @@
         
         async function checkAPIHealth() {
             try {
-                await axios.get(`${API_BASE}/`);
+                await axios.get('/');  // 健康检查调用后端根路由
                 document.getElementById('api-status').innerHTML = `
                     <div class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
                     <span class="text-[11px] font-medium text-[#00ff88]">API 已连接</span>`;
