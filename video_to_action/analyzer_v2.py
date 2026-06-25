@@ -83,6 +83,7 @@ class AnalyzerV2:
                         "echo 'export PATH=\"$HOME/.pyenv/bin:$PATH\"' >> ~/.bashrc",
                         "echo 'eval \"$(pyenv init -)\"' >> ~/.bashrc",
                     ],
+                    "run_commands": [],
                     "warnings": ["需要gcc等编译工具"],
                 }
             ],
@@ -103,12 +104,18 @@ class AnalyzerV2:
   - name: 工具名称
   - purpose: 工具用途（中文）
   - links: 相关链接列表（GitHub、官网等，无则空数组）
-  - install_commands: 安装命令列表（无则空数组）
-  - config_steps: 配置步骤列表（无则空数组）
+  - install_commands: 安装命令列表（仅包含安装/下载命令，如 npm install -g、pip install 等；无则空数组）
+  - config_steps: 配置步骤列表（安装后的配置命令，无则空数组）
+  - run_commands: 启动/运行命令列表（安装完成后如何启动或使用该工具，如 claude --help、code . 等；无则空数组）
   - warnings: 注意事项列表（无则空数组）
 - needs_credential: 是否需要密码/密钥/Token（布尔值）
 - is_paid: 是否付费（布尔值）
 - alternative_tools: 替代工具列表（无则空数组）
+
+【关键区别】：
+- install_commands：用来"安装"工具的命令（如 npm install -g pkg、pip install pkg）
+- run_commands：用来"启动/使用"工具的命令（如 claude、code .、npx pkg --help）
+- 如果视频只介绍了如何启动一个工具（如 Claude Code），请将启动命令放在 run_commands，不要放在 install_commands
 
 【示例输出】
 {json.dumps(few_shot_example, ensure_ascii=False, indent=2)}
@@ -118,6 +125,7 @@ class AnalyzerV2:
 2. 确保JSON格式合法（可用json.loads解析）
 3. 如果视频不涉及工具安装，tools为空数组
 4. 所有文本字段使用中文
+5. 严格区分 install_commands 和 run_commands
 
 开始分析："""
 

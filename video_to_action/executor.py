@@ -187,18 +187,36 @@ class Executor:
         }
 
     def execute_plan(self, plan: dict, confirm_all: bool = False) -> list[dict]:
-        """执行完整的行动计划，按顺序运行安装命令与配置步骤。"""
+        """执行完整的行动计划，按顺序运行安装命令、配置步骤和启动命令。
+
+        执行顺序：
+        1. install_commands（安装命令）
+        2. config_steps（配置步骤）
+        3. run_commands（启动/运行命令，交互式工具会自动跳过）
+        """
         results = []
         tools = plan.get("tools", [])
         for tool in tools:
+            # 1. 安装命令
             for command in tool.get("install_commands", []):
                 result = self.execute(command, confirm=confirm_all)
                 results.append(result)
                 if not result["success"]:
                     return results
+
+            # 2. 配置步骤
             for step in tool.get("config_steps", []):
                 result = self.execute(step, confirm=confirm_all)
                 results.append(result)
                 if not result["success"]:
                     return results
+
+            # 3. 启动命令（交互式工具会自动跳过）
+            for command in tool.get("run_commands", []):
+                result = self.execute(command, confirm=confirm_all)
+                results.append(result)
+                # 启动命令失败不阻止后续步骤（可能是交互式工具被跳过）
+                if not result["success"] and not result.get("skipped"):
+                    return results
+
         return results
