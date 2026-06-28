@@ -35,12 +35,12 @@ class Resolver:
 
         # 网络超时，切换到华为云镜像
         if any(keyword in error_lower for keyword in ["timed out", "timeout", "connection", "connect timeout"]):
-            if command.startswith("pip"):
-                return command + " -i https://mirrors.huaweicloud.com/repository/pypi/simple/"
+            if command.startswith("pip") or "pip" in command.lower():
+                return "pip install 命令建议添加 -i 参数使用国内镜像：pip install <pkg> -i https://mirrors.huaweicloud.com/repository/pypi/simple/"
 
         # 权限不足（Linux/macOS）
         if "permission denied" in error_lower:
-            return f"尝试使用 sudo 执行：sudo {command}"
+            return "该命令可能需要管理员权限，请尝试在命令前添加 sudo（Linux/macOS）或以管理员身份运行（Windows）"
 
         # npm 命令未找到
         if "command not found: npm" in error_lower:

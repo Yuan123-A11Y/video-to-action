@@ -127,6 +127,7 @@ def download_video(url: str, config: dict, output_dir: Path) -> dict:
         except Exception as e:
             failure_messages.append(f"douyin-downloader 异常: {e}")
 
+    result = None  # 初始化，防止后续引用未定义
     try:
         downloader = YtDlpDownloader(config, output_dir)
         result = downloader.download(url)
@@ -139,18 +140,23 @@ def download_video(url: str, config: dict, output_dir: Path) -> dict:
 
     fallback = config.get("download", {}).get("fallback")
     if fallback == "greenvideo":
-        green = GreenVideoDownloader(config, output_dir)
-        green_result = green.download(url)
-        if green_result["success"]:
-            return green_result
-        failure_messages.append(f"GreenVideo 失败: {green_result.get('stderr', '')}")
+        try:
+            green = GreenVideoDownloader(config, output_dir)
+            green_result = green.download(url)
+            if green_result["success"]:
+                return green_result
+            failure_messages.append(f"GreenVideo 失败: {green_result.get('stderr', '')}")
+        except Exception as e:
+            failure_messages.append(f"GreenVideo 异常: {e}")
+
+    if result is None:
         return {
             "success": False,
             "platform": platform,
-            "method": "greenvideo",
+            "method": "unknown",
             "output_path": "",
             "stdout": "",
-            "stderr": "; ".join(failure_messages),
+            "stderr": "; ".join(failure_messages) or "所有下载方案均失败",
         }
 
     result["platform"] = platform

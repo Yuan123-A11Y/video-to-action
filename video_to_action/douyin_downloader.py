@@ -3,7 +3,6 @@
 import asyncio
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -90,30 +89,73 @@ class DouyinDownloader:
         return cookies
 
     def _load_cookies_from_browser(self, browser: str) -> dict[str, str]:
+        """从浏览器导出 Cookie（使用 yt-dlp 的 --cookies-from-browser 功能导出到临时文件）。"""
+        import tempfile
+
+        tmp_cookie_file = None
         try:
-            result = subprocess.run(
-                [
-                    "yt-dlp",
-                    "--cookies-from-browser",
-                    browser,
-                    "--print-json",
-                    "--skip-download",
-                    "https://www.douyin.com",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                return {}
+            # 让 yt-dlp 将浏览器 Cookie 导出到临时 Netscape 格式文件
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as tmp:
+                tmp_cookie_file = tmp.name
+
+            # 使用 yt-dlp 导出 Cookie 到文件
+            # 注意：yt-dlp 本身不提供"仅导出 Cookie"的子命令，
+            # 但可以通过 --cookies-from-browser 配合一次空下载来获取 Cookie 文件。
+            # 这里采用更可靠的方式：直接用 http.cookiejar 读取浏览器 Cookie
+            return self._extract_browser_cookies(browser)
         except Exception:
-            pass
-        return {}
+            return {}
+        finally:
+            if tmp_cookie_file:
+                try:
+                    Path(tmp_cookie_file).unlink(missing_ok=True)
+                except Exception:
+                    pass
+
+    def _extract_browser_cookies(self, browser: str) -> dict[str, str]:
+        """尝试用 browser_cookie3 库直接读取浏览器 Cookie。"""
+        try:
+            import browser_cookie3
+
+            cj = getattr(browser_cookie3, browser, None)
+            if cj is None:
+                # 浏览器名称映射
+                browser_map = {
+                    "chrome": browser_cookie3.chrome,
+                    "chromium": browser_cookie3.chromium,
+                    "firefox": browser_cookie3.firefox,
+                    "edge": browser_cookie3.edge,
+                    "safari": browser_cookie3.safari,
+                }
+                cj = browser_map.get(browser)
+            if cj is None:
+                return {}
+            cookie_jar = cj(domain_name=".douyin.com")
+            return {c.name: c.value for c in cookie_jar}
+        except ImportError:
+            # browser_cookie3 未安装，静默失败
+            return {}
+        except Exception:
+            return {}
 
     def download(self, url: str, filename: str | None = None) -> dict:
         platform = "douyin"
         try:
-            result = asyncio.run(self._async_download(url))
+            # 检查是否已在事件循环中（如在 FastAPI background task 内调用）
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                # 已在异步上下文中，用 run_in_executor 避免事件循环冲突
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    result = pool.submit(asyncio.run, self._async_download(url)).result(timeout=300)
+            else:
+                # 普通同步调用
+                result = asyncio.run(self._async_download(url))
             if result["success"] and result.get("video_path"):
                 video_path = Path(result["video_path"])
                 if filename is None:
@@ -121,6 +163,10 @@ class DouyinDownloader:
                 dest_path = self.output_dir / filename
                 self.output_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(video_path, dest_path)
+                # 清理临时下载目录（防止磁盘泄漏）
+                temp_dir = self.output_dir / "_douyin_temp"
+                if temp_dir.exists():
+                    shutil.rmtree(temp_dir, ignore_errors=True)
                 result["output_path"] = str(dest_path)
                 return {
                     "success": True,

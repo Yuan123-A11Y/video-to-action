@@ -1,0 +1,82 @@
+classDiagram
+    class User {
+        +int id
+        +string username
+        +string email
+        +string password_hash
+        +string role
+        +datetime created_at
+        +datetime updated_at
+        +datetime last_login_at
+        +bool is_active
+        +save() User
+        +check_password(password: str) bool
+        +set_password(password: str) void
+    }
+
+    class UserRepository {
+        +get_by_id(user_id: int) User
+        +get_by_username(username: str) User
+        +get_by_email(email: str) User
+        +create(user_data: dict) User
+        +update(user_id: int, data: dict) bool
+        +delete(user_id: int) bool
+        +exists_username(username: str) bool
+        +exists_email(email: str) bool
+    }
+
+    class AuthService {
+        +register(username: str, email: str, password: str) AuthResponse
+        +login(username: str, password: str) AuthResponse
+        +logout(access_token: str, refresh_token: str) bool
+        +refresh_token(refresh_token: str) AuthResponse
+        +get_current_user(user_id: int) User
+        +verify_token(token: str) TokenPayload
+    }
+
+    class JWTHandler {
+        +create_access_token(user: User) str
+        +create_refresh_token(user: User) str
+        +decode_token(token: str) TokenPayload
+        +verify_token(token: str) bool
+        +blacklist_token(token_jti: str, exp: int) void
+        +is_blacklisted(token_jti: str) bool
+    }
+
+    class TokenPayload {
+        +int sub
+        +string username
+        +string role
+        +string jti
+        +int exp
+        +string type
+    }
+
+    class AuthResponse {
+        +string access_token
+        +string refresh_token
+        +string token_type
+        +int expires_in
+        +User user
+    }
+
+    class RegisterRequest {
+        +string username
+        +string email
+        +string password
+        +string confirm_password
+    }
+
+    class LoginRequest {
+        +string username
+        +string password
+        +bool remember_me
+    }
+
+    UserRepository --> User : 管理
+    AuthService --> UserRepository : 使用
+    AuthService --> JWTHandler : 使用
+    AuthService --> AuthResponse : 返回
+    AuthService --> RegisterRequest : 接收
+    AuthService --> LoginRequest : 接收
+    JWTHandler --> TokenPayload : 生成/解析

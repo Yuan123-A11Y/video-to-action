@@ -8,9 +8,6 @@ CLI 模块单元测试。
 - 错误处理
 """
 
-import json
-import os
-import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -35,9 +32,12 @@ class TestParseArguments:
         argv = [
             "process",
             "https://www.douyin.com/video/123456",
-            "--level", "observe",
-            "--config", "custom_config.yaml",
-            "--output", "custom_output",
+            "--level",
+            "observe",
+            "--config",
+            "custom_config.yaml",
+            "--output",
+            "custom_output",
             "--save-to-kb",
             "--verbose",
         ]
@@ -64,15 +64,12 @@ class TestParseArguments:
 class TestCLIProcessFlow:
     """测试 CLI 主流程（mock 各模块）。"""
 
-    @patch("video_to_action.cli.download_video")
-    @patch("video_to_action.cli.Extractor")
-    @patch("video_to_action.cli.AnalyzerV2")
-    @patch("video_to_action.cli.Executor")
-    @patch("video_to_action.cli.Reporter")
-    def test_process_flow_success(
-        self, mock_reporter, mock_executor, mock_analyzer,
-        mock_extractor, mock_download
-    ):
+    @patch("video_to_action.cli_process.download_video")
+    @patch("video_to_action.cli_process.Extractor")
+    @patch("video_to_action.cli_process.AnalyzerV2")
+    @patch("video_to_action.cli_process.Executor")
+    @patch("video_to_action.cli_process.Reporter")
+    def test_process_flow_success(self, mock_reporter, mock_executor, mock_analyzer, mock_extractor, mock_download):
         """测试完整流程成功。"""
         # Mock 下载
         mock_download.return_value = {
@@ -84,9 +81,7 @@ class TestCLIProcessFlow:
 
         # Mock 提取
         mock_extractor_instance = MagicMock()
-        mock_extractor_instance.transcribe.return_value = [
-            {"start": 0, "end": 5, "text": "测试文本"}
-        ]
+        mock_extractor_instance.transcribe.return_value = [{"start": 0, "end": 5, "text": "测试文本"}]
         mock_extractor_instance.extract_audio.return_value = Path("/path/to/audio.wav")
         mock_extractor.return_value = mock_extractor_instance
 
@@ -114,6 +109,7 @@ class TestCLIProcessFlow:
 
         # 运行主流程
         from video_to_action.cli import main
+
         with patch("sys.argv", ["cli.py", "process", "https://www.douyin.com/video/123456"]):
             exit_code = main()
             assert exit_code == 0
@@ -125,6 +121,7 @@ class TestCLIURLFormatSupport:
     def test_douyin_short_url(self):
         """测试抖音短链格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://v.douyin.com/iRNBho6/"
         platform = detect_video_platform(url)
         assert platform == "douyin"
@@ -132,6 +129,7 @@ class TestCLIURLFormatSupport:
     def test_douyin_video_url(self):
         """测试抖音 /video/ 格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://www.douyin.com/video/7513843872540233023"
         platform = detect_video_platform(url)
         assert platform == "douyin"
@@ -139,6 +137,7 @@ class TestCLIURLFormatSupport:
     def test_douyin_modal_id_url(self):
         """测试抖音 modal_id 参数格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://www.douyin.com/jingxuan/course?modal_id=7513843872540233023"
         platform = detect_video_platform(url)
         assert platform == "douyin"
@@ -146,6 +145,7 @@ class TestCLIURLFormatSupport:
     def test_bilibili_url(self):
         """测试 B站 URL 格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://www.bilibili.com/video/BV1xx411c7mD"
         platform = detect_video_platform(url)
         assert platform == "bilibili"
@@ -153,6 +153,7 @@ class TestCLIURLFormatSupport:
     def test_youtube_url(self):
         """测试 YouTube URL 格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         platform = detect_video_platform(url)
         assert platform == "youtube"
@@ -160,6 +161,7 @@ class TestCLIURLFormatSupport:
     def test_unknown_url(self):
         """测试未知 URL 格式。"""
         from video_to_action.downloader import detect_video_platform
+
         url = "https://www.example.com/video/123"
         platform = detect_video_platform(url)
         assert platform == "unknown"

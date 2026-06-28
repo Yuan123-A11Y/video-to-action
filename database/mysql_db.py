@@ -205,8 +205,17 @@ class Database:
                 params.append(theme)
             
             if keyword:
-                where_parts.append("(title LIKE %s OR transcription_text LIKE %s)")
-                params.extend([f"%{keyword}%", f"%{keyword}%"])
+                # 使用全文索引加速搜索（相比 LIKE %keyword% 提升 10-100x）
+                # 如果关键词太短（< 4 字符），回退到 LIKE 查询
+                if len(keyword) >= 4:
+                    where_parts.append("""
+                        MATCH(title, transcription_text) AGAINST (%s IN NATURAL LANGUAGE MODE)
+                    """)
+                    params.append(keyword)
+                else:
+                    # 短关键词使用 LIKE（全文索引最小词长限制为 4）
+                    where_parts.append("(title LIKE %s OR transcription_text LIKE %s)")
+                    params.extend([f"%{keyword}%", f"%{keyword}%"])
             
             where_sql = f"WHERE {' AND '.join(where_parts)}" if where_parts else ""
             

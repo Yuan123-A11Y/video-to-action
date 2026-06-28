@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video-to-Action | 智能分析引擎</title>
+    <title>Video-to-Action</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script>
@@ -14,1193 +13,530 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        display: ['Orbitron', 'sans-serif'],
-                        heading: ['Rajdhani', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'Share Tech Mono', 'monospace'],
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
                     },
                     colors: {
-                        'cyber-bg': '#0a0e17',
-                        'cyber-bg-light': '#111827',
-                        'neon-blue': '#00f0ff',
-                        'neon-purple': '#b400ff',
-                        'electric-blue': '#0080ff',
-                        'cyber-green': '#00ff88',
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            200: '#ddd6fe',
+                            300: '#c4b5fd',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            700: '#6d28d9',
+                            800: '#5b21b6',
+                            900: '#4c1d95',
+                        }
                     }
                 }
             }
         }
     </script>
     <style>
-        * { box-sizing: border-box; margin:0; padding:0; }
-        
-        :root {
-            --neon-blue: #00f0ff;
-            --neon-purple: #b400ff;
-            --electric-blue: #0080ff;
-            --cyber-green: #00ff88;
-            --cyber-bg: #0a0e17;
-            --glow-blue: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 20px rgba(0, 240, 255, 0.3), 0 0 30px rgba(0, 240, 255, 0.1);
-        }
-        
-        body {
-            font-family: 'Rajdhani', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background-color: var(--cyber-bg);
-            color: #e2e8f0;
-            overflow-x: hidden;
-        }
-        
-        .grid-bg {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: 0;
-            pointer-events: none;
-        }
-        
-        #particles-canvas {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 0;
-            pointer-events: none;
-            opacity: 0.4;
-        }
-        
-        .scanline {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
-            box-shadow: 0 0 15px var(--neon-blue), 0 0 30px rgba(0, 240, 255, 0.3);
-            z-index: 1;
-            animation: scanDown 8s linear infinite;
-            pointer-events: none;
-            opacity: 0.15;
-        }
-        
-        @keyframes scanDown {
-            0% { top: -2px; }
-            100% { top: 100%; }
-        }
-        
-        .glass-card {
-            background: rgba(17, 24, 39, 0.6);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 240, 255, 0.1);
-            border-radius: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .glass-card::before {
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        .nav-active { position: relative; }
+        .nav-active::before {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
-            opacity: 0.5;
+            left: 0; top: 8px; bottom: 8px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: #7c3aed;
         }
-        
-        .neon-border {
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-        
-        .neon-border:hover {
-            border-color: rgba(0, 240, 255, 0.4);
-            box-shadow: 
-                inset 0 0 20px rgba(0, 240, 255, 0.1),
-                0 0 15px rgba(0, 240, 255, 0.2);
-        }
-        
-        .btn-neon {
-            background: linear-gradient(135deg, rgba(0, 128, 255, 0.2), rgba(0, 240, 255, 0.2));
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            color: var(--neon-blue);
-            font-family: 'Rajdhani', sans-serif;
-            font-weight: 600;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-neon::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .btn-neon:hover::before {
-            left: 100%;
-        }
-        
-        .btn-neon:hover {
-            background: linear-gradient(135deg, rgba(0, 128, 255, 0.3), rgba(0, 240, 255, 0.3));
-            border-color: var(--neon-blue);
-            box-shadow: var(--glow-blue);
-            transform: translateY(-2px);
-        }
-        
-        .cyber-input {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(0, 240, 255, 0.15);
-            color: #e2e8f0;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        .cyber-input:focus {
-            outline: none;
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2), inset 0 0 10px rgba(0, 240, 255, 0.05);
-            background: rgba(0, 0, 0, 0.6);
-        }
-        
-        .cyber-input::placeholder {
-            color: rgba(226, 232, 240, 0.3);
-        }
-        
-        .sidebar-cyber {
-            background: linear-gradient(180deg, rgba(10, 14, 23, 0.95), rgba(17, 24, 39, 0.95));
-            border-right: 1px solid rgba(0, 240, 255, 0.1);
-            backdrop-filter: blur(20px);
-        }
-        
-        .nav-item {
-            font-weight: 500;
-            letter-spacing: 0.3px;
-            color: rgba(226, 232, 240, 0.6);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        
-        .nav-item:hover {
-            color: var(--neon-blue);
-            background: rgba(0, 240, 255, 0.05);
-        }
-        
-        .nav-item.active {
-            color: var(--neon-blue);
-            background: rgba(0, 240, 255, 0.1);
-            border-left: 2px solid var(--neon-blue);
-            box-shadow: inset 0 0 15px rgba(0, 240, 255, 0.1);
-            text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, rgba(17, 24, 39, 0.8), rgba(10, 14, 23, 0.8));
-            border: 1px solid rgba(0, 240, 255, 0.1);
-            border-radius: 12px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .stat-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--neon-blue), var(--neon-purple), transparent);
-            opacity: 0.6;
-        }
-        
-        @keyframes pulseRing {
-            0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(1.8); opacity: 0; }
-        }
-        
-        .pulse-dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            position: relative;
-        }
-        
-        .pulse-dot::before {
-            content: '';
-            position: absolute;
-            top: -4px; left: -4px; right: -4px; bottom: -4px;
-            border-radius: 50%;
-            border: 2px solid currentColor;
-            animation: pulseRing 2s ease-out infinite;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
-            opacity: 0;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .toast {
-            animation: slideIn 0.3s ease-out;
-        }
-        
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
         }
-        
-        .progress-bar {
-            height: 3px;
-            background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
-            border-radius: 2px;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .progress-bar::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        .skeleton {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 800px 100%;
             animation: shimmer 1.5s infinite;
         }
-        
-        .tag-cyber {
-            background: rgba(0, 240, 255, 0.1);
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            color: var(--neon-blue);
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 6px;
-        }
-        
-        .toggle-cyber {
-            width: 44px; height: 24px;
-            border-radius: 12px;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .toggle-cyber.active {
-            background: linear-gradient(135deg, var(--electric-blue), var(--neon-blue));
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
-        }
-        
-        .toggle-cyber.inactive {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .toggle-cyber span {
-            position: absolute;
-            top: 3px;
-            width: 18px; height: 18px;
-            border-radius: 50%;
-            background: white;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .toggle-cyber.active span {
-            left: 23px;
-        }
-        
-        .toggle-cyber.inactive span {
-            left: 3px;
-        }
-        
-        .code-block {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(0, 240, 255, 0.15);
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--cyber-green);
-            text-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
-        }
-        
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-        ::-webkit-scrollbar-thumb { 
-            background: rgba(0, 240, 255, 0.3); 
-            border-radius: 3px; 
-        }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.5); }
-        
-        .level-btn-cyber {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(0, 240, 255, 0.1);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-        
-        .level-btn-cyber:hover {
-            border-color: rgba(0, 240, 255, 0.3);
-            background: rgba(0, 240, 255, 0.05);
-        }
-        
-        .level-btn-cyber.active {
-            border-color: var(--neon-blue);
-            background: rgba(0, 240, 255, 0.1);
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2), inset 0 0 15px rgba(0, 240, 255, 0.05);
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.25s ease-out; }
+        .step-done { color: #059669; }
+        .step-active { color: #7c3aed; }
+        .step-pending { color: #9ca3af; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+        .sidebar-overlay.show { display: block; }
+        @media (max-width: 768px) {
+            .sidebar-desktop { display: none; }
         }
     </style>
 </head>
-<body class="min-h-screen">
-    <div class="grid-bg"></div>
-    <canvas id="particles-canvas"></canvas>
-    <div class="scanline"></div>
-    
-    <div id="sidebar-overlay" class="fixed inset-0 bg-black/70 z-40 hidden" onclick="toggleSidebar()"></div>
-    
-    <header class="md:hidden fixed top-0 left-0 right-0 z-30 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-4 py-3 flex items-center justify-between">
-        <button onclick="toggleSidebar()" class="text-[#e2e8f0] hover:text-[#00f0ff] transition-colors p-1 -ml-1">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <header class="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30">
+        <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-900">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg>
         </button>
-        <div class="flex items-center space-x-2">
-            <div class="w-7 h-7 bg-gradient-to-br from-[#0080ff] to-[#00f0ff] rounded-lg flex items-center justify-center shadow-lg shadow-[rgba(0,240,255,0.3)]">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
-            </div>
-            <span class="font-bold text-[#00f0ff] text-sm tracking-wider" style="text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);">V2A</span>
-        </div>
+        <span class="font-semibold text-gray-900 text-sm">Video-to-Action</span>
         <div class="w-6"></div>
     </header>
-    
-    <div class="flex min-h-screen pt-16 md:pt-0">
-        <aside id="sidebar" class="sidebar-cyber fixed md:static inset-y-0 left-0 z-50 w-64 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl shadow-[rgba(0,240,255,0.1)]">
-            <div class="px-6 py-5 border-b border-[rgba(0,240,255,0.1)]">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-[#0080ff] to-[#00f0ff] rounded-xl flex items-center justify-center shadow-lg shadow-[rgba(0,240,255,0.4)]">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
+
+    <div class="flex flex-1 overflow-hidden">
+        <aside id="sidebar" class="sidebar-desktop fixed md:static inset-y-0 left-0 z-50 w-60 bg-gray-900 text-gray-300 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-in-out">
+            <div class="px-5 py-5 border-b border-gray-800">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/></svg>
                     </div>
-                    <div>
-                        <h1 class="font-display font-bold text-[#00f0ff] text-base tracking-wider" style="text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);">VIDEO-TO-ACTION</h1>
-                        <p class="text-[10px] text-[rgba(226,232,240,0.4)] mt-0.5">// 智能分析引擎</p>
-                    </div>
+                    <span class="text-white font-bold text-[15px] tracking-tight">Video-to-Action</span>
                 </div>
+                <p class="text-[11px] text-gray-500 mt-1.5 font-medium">视频内容分析系统</p>
             </div>
-            
-            <nav class="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-                <p class="px-3 mb-2 text-[9px] font-bold text-[rgba(226,232,240,0.3)] uppercase tracking-[2px]">核心功能</p>
-                
-                <button onclick="showPage('process')" id="nav-process" class="nav-item active w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+            <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+                <p class="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest">主要功能</p>
+                <button onclick="showPage('process')" id="nav-process" class="nav-active w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white bg-gray-800">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
                     <span>处理视频</span>
                 </button>
-                
-                <button onclick="showPage('videos')" id="nav-videos" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                <button onclick="showPage('videos')" id="nav-videos" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition-colors">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
                     <span>视频库</span>
                 </button>
-                
-                <button onclick="showPage('tools')" id="nav-tools" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
+                <button onclick="showPage('tools')" id="nav-tools" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition-colors">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
                     <span>工具库</span>
                 </button>
-                
-                <button onclick="showPage('search')" id="nav-search" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-                    <span>智能搜索</span>
+                <button onclick="showPage('search')" id="nav-search" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition-colors">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0110.607 10.607z"/></svg>
+                    <span>搜索</span>
                 </button>
-                
-                <div class="my-4 border-t border-[rgba(0,240,255,0.05)]"></div>
-                <p class="px-3 mb-2 text-[9px] font-bold text-[rgba(226,232,240,0.3)] uppercase tracking-[2px]">数据分析</p>
-                
-                <button onclick="showPage('stats')" id="nav-stats" class="nav-item w-full flex items-center space-x-3 px-3 py-2.5 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+                <div class="my-3 border-t border-gray-800"></div>
+                <p class="px-3 mb-2 text-[10px] font-bold text-gray-600 uppercase tracking-widest">数据</p>
+                <button onclick="showPage('stats')" id="nav-stats" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-gray-800/60 transition-colors">
+                    <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
                     <span>统计概览</span>
                 </button>
             </nav>
-            
-            <div class="px-5 py-4 border-t border-[rgba(0,240,255,0.05)]">
+            <div class="px-4 py-3 border-t border-gray-800">
                 <div class="flex items-center space-x-2.5">
-                    <div id="api-status-dot" class="pulse-dot bg-[rgba(226,232,240,0.2)] text-[rgba(226,232,240,0.2)]"></div>
-                    <span id="api-status-text" class="text-[10px] text-[rgba(226,232,240,0.4)]">连接检查中...</span>
+                    <div id="api-status-dot" class="w-2 h-2 rounded-full bg-gray-500"></div>
+                    <span id="api-status-text" class="text-[11px] text-gray-500">检查连接中...</span>
                 </div>
             </div>
         </aside>
-        
-        <main class="flex-1 overflow-y-auto relative z-10 pb-20 md:pb-8">
-            <div id="page-process" class="page p-4 md:p-8 max-w-4xl mx-auto">
-                <div class="mb-8 fade-in" style="animation-delay: 0.1s;">
-                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">处理新视频</h1>
-                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2">AI 驱动的视频分析与自动化引擎</p>
+
+        <main class="flex-1 overflow-y-auto">
+            <div id="page-process" class="page p-4 md:p-8 max-w-3xl mx-auto">
+                <div class="mb-8">
+                    <h1 class="text-2xl font-bold text-gray-900">处理新视频</h1>
+                    <p class="text-gray-500 text-sm mt-1">输入视频链接，系统将自动分析内容并生成操作方案</p>
                 </div>
-                
-                <div class="glass-card p-8 mb-6 fade-in" style="animation-delay: 0.2s;">
-                    <div class="space-y-6">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+                    <div class="space-y-5">
                         <div>
-                            <label class="flex items-center space-x-2 text-sm font-bold text-[#00f0ff] mb-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-2.12a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.343 8.31m6.364-6.364l-2.828 2.828"/></svg>
-                                <span>视频链接</span>
-                            </label>
-                            <input type="text" id="video-url" placeholder="https:// 或 本地文件路径"
-                                class="cyber-input w-full pl-4 pr-4 py-3 text-sm"
-                                onkeydown="if(event.key==='Enter') processVideo()">
-                            <p class="text-[11px] text-[rgba(226,232,240,0.3)] mt-2">支持：抖音、B站、YouTube 等平台，也可输入本地视频路径</p>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">视频链接</label>
+                            <div class="relative">
+                                <input type="text" id="video-url" placeholder="https:// 或 本地文件路径" class="w-full pl-4 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all" onkeydown="if(event.key==='Enter') processVideo()">
+                            </div>
+                            <p class="text-[12px] text-gray-400 mt-1.5">支持抖音、B站、YouTube 等平台，也可直接输入本地视频路径</p>
                         </div>
-                        
                         <div>
-                            <label class="flex items-center space-x-2 text-sm font-bold text-[#00f0ff] mb-3">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"/></svg>
-                                <span>自动化级别</span>
-                            </label>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="level-selector">
-                                <button type="button" onclick="selectLevel('extract')" id="level-extract"
-                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
-                                    <div class="font-bold text-[rgba(226,232,240,0.8)]">提取模式</div>
-                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1">仅提取文本</div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-1.5">自动化级别</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5" id="level-selector">
+                                <button type="button" onclick="selectLevel('extract')" id="level-extract" class="level-btn px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-left hover:border-gray-300 transition-colors">
+                                    <div class="font-semibold text-gray-800">Extract</div>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">仅提取文本</div>
                                 </button>
-                                <button type="button" onclick="selectLevel('observe')" id="level-observe"
-                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
-                                    <div class="font-bold text-[rgba(226,232,240,0.8)]">观察模式</div>
-                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1">仅分析内容</div>
+                                <button type="button" onclick="selectLevel('observe')" id="level-observe" class="level-btn px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-left hover:border-gray-300 transition-colors">
+                                    <div class="font-semibold text-gray-800">Observe</div>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">仅观察分析</div>
                                 </button>
-                                <button type="button" onclick="selectLevel('confirm')" id="level-confirm"
-                                    class="level-btn-cyber px-4 py-3 text-sm text-left">
-                                    <div class="font-bold text-[rgba(226,232,240,0.8)]">确认模式</div>
-                                    <div class="text-[10px] text-[rgba(226,232,240,0.3)] mt-1">逐步确认执行</div>
+                                <button type="button" onclick="selectLevel('confirm')" id="level-confirm" class="level-btn px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-left hover:border-gray-300 transition-colors">
+                                    <div class="font-semibold text-gray-800">Confirm</div>
+                                    <div class="text-[11px] text-gray-400 mt-0.5">逐步骤确认</div>
                                 </button>
-                                <button type="button" onclick="selectLevel('auto')" id="level-auto"
-                                    class="level-btn-cyber active px-4 py-3 text-sm text-left">
-                                    <div class="font-bold text-[#00f0ff]">自动模式</div>
-                                    <div class="text-[10px] text-[rgba(0,240,255,0.5)] mt-1">全自动执行</div>
+                                <button type="button" onclick="selectLevel('auto')" id="level-auto" class="level-btn px-3 py-2.5 border-2 border-brand-500 rounded-lg text-sm text-left bg-brand-50">
+                                    <div class="font-semibold text-brand-700">Auto</div>
+                                    <div class="text-[11px] text-brand-400 mt-0.5">全自动执行</div>
                                 </button>
                             </div>
                             <input type="hidden" id="process-level" value="auto">
                         </div>
-                        
-                        <div class="flex items-center justify-between py-3 px-4 bg-[rgba(0,0,0,0.3)] rounded-lg border border-[rgba(0,240,255,0.05)]">
-                            <div class="flex items-center space-x-2">
-                                <svg class="w-4 h-4 text-[#00f0ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-                                <label for="save-to-kb" class="text-sm font-medium text-[rgba(226,232,240,0.7)] cursor-pointer">保存到知识库</label>
-                            </div>
-                            <div id="save-to-kb-toggle" onclick="toggleSwitch('save-to-kb-toggle', 'save-to-kb')" class="toggle-cyber active">
-                                <span></span>
-                            </div>
+                        <div class="flex items-center justify-between py-1">
+                            <label for="save-to-kb" class="text-sm font-medium text-gray-700 cursor-pointer">保存到知识库</label>
+                            <button type="button" id="save-to-kb-toggle" onclick="toggleSwitch('save-to-kb-toggle', 'save-to-kb')" class="relative w-10 h-5.5 bg-brand-600 rounded-full transition-colors cursor-pointer focus:outline-none">
+                                <span class="absolute top-0.5 left-0.5 w-4.5 h-4.5 bg-white rounded-full shadow transform translate-x-4.5 transition-transform"></span>
+                            </button>
                             <input type="checkbox" id="save-to-kb" checked class="hidden">
                         </div>
-                        
-                        <button onclick="processVideo()"
-                            id="process-btn"
-                            class="btn-neon w-full py-3 px-6 rounded-lg text-sm font-bold tracking-wider">
+                        <button onclick="processVideo()" id="process-btn" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition-colors active:scale-[0.98]">
                             开始处理
                         </button>
                     </div>
                 </div>
-                
                 <div id="processing-status" class="hidden">
-                    <div class="glass-card p-8 fade-in">
-                        <h2 class="text-lg font-bold text-white mb-6" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">处理进度</h2>
-                        <div id="progress-steps" class="space-y-4">
-                        </div>
-                        <div id="processing-result" class="hidden mt-6 pt-6 border-t border-[rgba(0,240,255,0.1)]">
-                            <h3 class="text-sm font-bold text-[#00f0ff] mb-3">处理结果</h3>
-                            <pre id="result-content" class="code-block p-5 rounded-lg text-[12px] leading-relaxed overflow-x-auto max-h-72"></pre>
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                        <h2 class="text-base font-bold text-gray-900 mb-5">处理进度</h2>
+                        <div id="progress-steps" class="space-y-4"></div>
+                        <div id="processing-result" class="hidden mt-5 pt-5 border-t border-gray-100">
+                            <h3 class="text-sm font-bold text-gray-900 mb-3">处理结果</h3>
+                            <pre id="result-content" class="bg-gray-900 text-gray-300 p-4 rounded-lg text-[12px] leading-relaxed overflow-x-auto max-h-72 font-mono"></pre>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <div id="page-videos" class="page hidden p-4 md:p-8">
-                <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
-                        <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">视频库</h1>
-                        <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2" id="videos-count-text">加载中...</p>
+                        <h1 class="text-2xl font-bold text-gray-900">视频库</h1>
+                        <p class="text-gray-500 text-sm mt-1" id="videos-count-text">加载中...</p>
                     </div>
-                    <div class="relative">
-                        <input type="text" id="video-search" placeholder="搜索视频..."
-                            class="cyber-input pl-10 pr-4 py-2.5 text-sm w-56"
-                            oninput="filterVideos()">
-                        <svg class="w-4 h-4 absolute left-3.5 top-3 text-[rgba(226,232,240,0.3)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    <div class="flex items-center space-x-2">
+                        <div class="relative">
+                            <input type="text" id="video-search" placeholder="筛选视频..." class="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none w-48 transition-all" oninput="filterVideos()">
+                            <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0110.607 10.607z"/></svg>
+                        </div>
                     </div>
                 </div>
-                <div id="videos-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                </div>
+                <div id="videos-list" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
+                <div id="videos-pagination" class="mt-6 flex justify-center"></div>
             </div>
-            
+
             <div id="page-tools" class="page hidden p-4 md:p-8">
-                <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                     <div>
-                        <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">工具库</h1>
-                        <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2" id="tools-count-text">加载中...</p>
+                        <h1 class="text-2xl font-bold text-gray-900">工具库</h1>
+                        <p class="text-gray-500 text-sm mt-1" id="tools-count-text">加载中...</p>
                     </div>
-                    <div class="relative">
-                        <input type="text" id="tool-search" placeholder="搜索工具..."
-                            class="cyber-input pl-10 pr-4 py-2.5 text-sm w-56"
-                            oninput="filterTools()">
-                        <svg class="w-4 h-4 absolute left-3.5 top-3 text-[rgba(226,232,240,0.3)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+                    <div class="flex items-center space-x-2">
+                        <div class="relative">
+                            <input type="text" id="tool-search" placeholder="筛选工具..." class="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none w-48 transition-all" oninput="filterTools()">
+                            <svg class="w-4 h-4 absolute left-3 top-2.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0110.607 10.607z"/></svg>
+                        </div>
                     </div>
                 </div>
-                <div id="tools-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                </div>
+                <div id="tools-list" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"></div>
             </div>
-            
-            <div id="page-search" class="page hidden p-4 md:p-8 max-w-3xl mx-auto">
+
+            <div id="page-search" class="page hidden p-4 md:p-8 max-w-2xl mx-auto">
                 <div class="mb-8">
-                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">智能搜索</h1>
-                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2">在知识库中检索信息</p>
+                    <h1 class="text-2xl font-bold text-gray-900">搜索知识库</h1>
+                    <p class="text-gray-500 text-sm mt-1">在已处理的视频和工具中检索</p>
                 </div>
-                
-                <div class="glass-card p-8 mb-8">
-                    <div class="flex space-x-3">
-                        <input type="text" id="search-query" placeholder="输入关键词..."
-                            class="cyber-input flex-1 pl-4 pr-4 py-3 text-sm"
-                            onkeydown="if(event.key==='Enter') searchKnowledgeBase()">
-                        <select id="search-type"
-                            class="cyber-input px-4 py-3 text-sm w-32">
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
+                    <div class="flex space-x-2">
+                        <div class="relative flex-1">
+                            <input type="text" id="search-query" placeholder="输入关键词..." class="w-full pl-4 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm bg-gray-50 focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all" onkeydown="if(event.key==='Enter') searchKnowledgeBase()">
+                        </div>
+                        <select id="search-type" class="px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none">
                             <option value="video">视频</option>
                             <option value="tool">工具</option>
                         </select>
-                        <button onclick="searchKnowledgeBase()"
-                            class="btn-neon px-6 py-3 rounded-lg text-sm font-bold tracking-wider whitespace-nowrap">
-                            搜索
-                        </button>
+                        <button onclick="searchKnowledgeBase()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">搜索</button>
                     </div>
                 </div>
-                
                 <div id="search-results"></div>
             </div>
-            
+
             <div id="page-stats" class="page hidden p-4 md:p-8">
                 <div class="mb-8">
-                    <h1 class="font-display text-3xl md:text-4xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">统计概览</h1>
-                    <p class="text-[rgba(226,232,240,0.5)] text-sm mt-2">系统数据分析面板</p>
+                    <h1 class="text-2xl font-bold text-gray-900">统计概览</h1>
+                    <p class="text-gray-500 text-sm mt-1">知识库数据总览</p>
                 </div>
-                <div id="stats-content" class="grid gap-6 md:grid-cols-3">
-                </div>
+                <div id="stats-content" class="grid gap-5 md:grid-cols-3"></div>
             </div>
         </main>
     </div>
-    
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-t border-[rgba(0,240,255,0.1)] z-20">
-        <div class="flex items-center justify-around px-2 py-1">
-            <button onclick="showPage('process')" class="flex flex-col items-center py-2 px-3 text-[10px] font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
-                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
-                <span>处理</span>
-            </button>
-            <button onclick="showPage('videos')" class="flex flex-col items-center py-2 px-3 text-[10px] font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
-                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                <span>视频</span>
-            </button>
-            <button onclick="showPage('tools')" class="flex flex-col items-center py-2 px-3 text-[10px] font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
-                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
-                <span>工具</span>
-            </button>
-            <button onclick="showPage('search')" class="flex flex-col items-center py-2 px-3 text-[10px] font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
-                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
-                <span>搜索</span>
-            </button>
-            <button onclick="showPage('stats')" class="flex flex-col items-center py-2 px-3 text-[10px] font-medium text-[rgba(226,232,240,0.4)] hover:text-[#00f0ff] transition-colors">
-                <svg class="w-5 h-5 mb-1" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75c0 .621-.504 1.125-1.125 1.125h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
-                <span>统计</span>
-            </button>
-        </div>
-    </nav>
-    
-    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-3"></div>
-    
+
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+
     <script>
         const API_BASE = 'http://localhost:8000/api';
         let currentLevel = 'auto';
         let allVideos = [];
         let allTools = [];
-        
-        function initParticles() {
-            const canvas = document.getElementById('particles-canvas');
-            const ctx = canvas.getContext('2d');
-            
-            function resize() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            resize();
-            window.addEventListener('resize', resize);
-            
-            const particles = [];
-            const particleCount = 50;
-            
-            for (let i = 0; i < particleCount; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    vx: (Math.random() - 0.5) * 0.5,
-                    vy: (Math.random() - 0.5) * 0.5,
-                    size: Math.random() * 2 + 0.5,
-                    opacity: Math.random() * 0.5 + 0.1,
-                });
-            }
-            
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                particles.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    
-                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                    
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(0, 240, 255, ${p.opacity})`;
-                    ctx.fill();
-                });
-                
-                for (let i = 0; i < particles.length; i++) {
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x;
-                        const dy = particles[i].y - particles[j].y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (dist < 120) {
-                            ctx.beginPath();
-                            ctx.moveTo(particles[i].x, particles[i].y);
-                            ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.strokeStyle = `rgba(0, 240, 255, ${0.1 * (1 - dist / 120)})`;
-                            ctx.lineWidth = 0.5;
-                            ctx.stroke();
-                        }
-                    }
-                }
-                
-                requestAnimationFrame(animate);
-            }
-            
-            animate();
-        }
-        
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
             const isOpen = !sidebar.classList.contains('-translate-x-full');
             if (isOpen) {
                 sidebar.classList.add('-translate-x-full');
-                overlay.classList.add('hidden');
+                overlay.classList.remove('show');
             } else {
                 sidebar.classList.remove('-translate-x-full');
-                overlay.classList.remove('hidden');
+                overlay.classList.add('show');
             }
         }
-        
+
         function showPage(pageName) {
-            document.querySelectorAll('.page').forEach(p => {
-                p.classList.add('hidden');
+            document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+            document.getElementById('page-' + pageName).classList.remove('hidden');
+            document.querySelectorAll('aside button[id^="nav-"]').forEach(b => {
+                b.classList.remove('nav-active', 'bg-gray-800', 'text-white');
+                b.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-gray-800/60');
             });
-            const targetPage = document.getElementById(`page-${pageName}`);
-            targetPage.classList.remove('hidden');
-            
-            document.querySelectorAll('.nav-item').forEach(b => {
-                b.classList.remove('active');
-            });
-            document.getElementById(`nav-${pageName}`).classList.add('active');
-            
+            const activeBtn = document.getElementById('nav-' + pageName);
+            activeBtn.classList.add('nav-active', 'bg-gray-800', 'text-white');
+            activeBtn.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-gray-800/60');
             if (window.innerWidth < 768) {
                 document.getElementById('sidebar').classList.add('-translate-x-full');
-                document.getElementById('sidebar-overlay').classList.add('hidden');
+                document.getElementById('sidebar-overlay').classList.remove('show');
             }
-            
             if (pageName === 'videos') loadVideos();
             if (pageName === 'tools') loadTools();
             if (pageName === 'stats') loadStats();
         }
-        
+
         function selectLevel(level) {
             currentLevel = level;
             document.getElementById('process-level').value = level;
-            document.querySelectorAll('.level-btn-cyber').forEach(btn => {
-                btn.classList.remove('active');
+            document.querySelectorAll('.level-btn').forEach(btn => {
+                btn.classList.remove('border-2', 'border-brand-500', 'bg-brand-50');
+                btn.classList.add('border', 'border-gray-200');
                 const label = btn.querySelector('div:first-child');
                 const sub = btn.querySelector('div:last-child');
-                label.classList.remove('text-[#00f0ff]');
-                label.classList.add('text-[rgba(226,232,240,0.8)]');
-                sub.classList.remove('text-[rgba(0,240,255,0.5)]');
-                sub.classList.add('text-[rgba(226,232,240,0.3)]');
+                label.classList.remove('text-brand-700');
+                label.classList.add('text-gray-800');
+                sub.classList.remove('text-brand-400');
+                sub.classList.add('text-gray-400');
             });
-            const active = document.getElementById(`level-${level}`);
-            active.classList.add('active');
-            active.querySelector('div:first-child').classList.remove('text-[rgba(226,232,240,0.8)]');
-            active.querySelector('div:first-child').classList.add('text-[#00f0ff]');
-            active.querySelector('div:last-child').classList.remove('text-[rgba(226,232,240,0.3)]');
-            active.querySelector('div:last-child').classList.add('text-[rgba(0,240,255,0.5)]');
+            const active = document.getElementById('level-' + level);
+            active.classList.remove('border', 'border-gray-200');
+            active.classList.add('border-2', 'border-brand-500', 'bg-brand-50');
+            active.querySelector('div:first-child').classList.remove('text-gray-800');
+            active.querySelector('div:first-child').classList.add('text-brand-700');
+            active.querySelector('div:last-child').classList.remove('text-gray-400');
+            active.querySelector('div:last-child').classList.add('text-brand-400');
         }
-        
+
         function toggleSwitch(buttonId, inputId) {
             const input = document.getElementById(inputId);
             const btn = document.getElementById(buttonId);
             input.checked = !input.checked;
             if (input.checked) {
-                btn.classList.remove('inactive');
-                btn.classList.add('active');
+                btn.classList.remove('bg-gray-300');
+                btn.classList.add('bg-brand-600');
+                btn.querySelector('span').classList.remove('translate-x-0');
+                btn.querySelector('span').classList.add('translate-x-4.5');
             } else {
-                btn.classList.remove('active');
-                btn.classList.add('inactive');
+                btn.classList.remove('bg-brand-600');
+                btn.classList.add('bg-gray-300');
+                btn.querySelector('span').classList.remove('translate-x-4.5');
+                btn.querySelector('span').classList.add('translate-x-0');
             }
         }
-        
-        function showToast(message, type = 'info') {
+
+        function showToast(message, type) {
             const container = document.getElementById('toast-container');
-            const bgColors = {
-                success: 'rgba(0, 255, 136, 0.9)',
-                error: 'rgba(255, 50, 50, 0.9)',
-                info: 'rgba(0, 240, 255, 0.9)',
-                warning: 'rgba(255, 180, 0, 0.9)',
-            };
+            const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-gray-800', warning: 'bg-amber-600' };
             const icons = {
-                success: '✓',
-                error: '✗',
-                info: 'ⓘ',
-                warning: '⚠',
+                success: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>',
+                error: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>',
+                info: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/></svg>',
+                warning: '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>',
             };
             const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.cssText = `
-                background: ${bgColors[type]};
-                color: #0a0e17;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-size: 13px;
-                font-weight: 600;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-                display: flex;
-                align-items: center;
-            `;
-            toast.innerHTML = `<span style="margin-right:8px;font-size:16px;">${icons[type]}</span><span>${message}</span>`;
+            toast.className = colors[type] + ' text-white px-4 py-2.5 rounded-lg shadow-lg flex items-center space-x-2 text-sm font-medium fade-in';
+            toast.innerHTML = '<span>' + icons[type] + '</span><span>' + message + '</span>';
             container.appendChild(toast);
-            setTimeout(() => {
+            setTimeout(function() {
                 toast.style.opacity = '0';
                 toast.style.transform = 'translateX(20px)';
                 toast.style.transition = 'all 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
+                setTimeout(function() { toast.remove(); }, 300);
             }, 3000);
         }
-        
+
         async function processVideo() {
             const url = document.getElementById('video-url').value.trim();
-            if (!url) {
-                showToast('请输入视频链接', 'warning');
-                document.getElementById('video-url').focus();
-                return;
-            }
-            
+            if (!url) { showToast('请输入视频链接', 'warning'); document.getElementById('video-url').focus(); return; }
             const btn = document.getElementById('process-btn');
             btn.disabled = true;
-            btn.textContent = '处理中...';
-            
+            btn.textContent = '提交中...';
+            btn.classList.add('opacity-60', 'cursor-not-allowed');
             const statusDiv = document.getElementById('processing-status');
             statusDiv.classList.remove('hidden');
-            document.getElementById('progress-steps').innerHTML = `
-                <div class="flex items-center space-x-3 text-sm">
-                    <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
-                    <span class="text-[#00f0ff]">正在提交任务...</span>
-                </div>`;
-            
+            document.getElementById('progress-steps').innerHTML = '<div class="flex items-center space-x-3 text-sm"><div class="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div><span class="text-gray-600">正在提交任务...</span></div>';
             try {
-                const response = await axios.post(`${API_BASE}/process`, {
-                    url: url,
-                    level: currentLevel,
-                    save_to_kb: document.getElementById('save-to-kb').checked,
-                });
-                
+                const response = await axios.post(API_BASE + '/process', { url: url, level: currentLevel, save_to_kb: document.getElementById('save-to-kb').checked });
                 const taskId = response.data.data.task_id;
-                document.getElementById('progress-steps').innerHTML = `
-                    <div class="flex items-center space-x-3 text-sm text-[#00ff88]">
-                        <span class="text-lg">✓</span>
-                        <span>任务已提交 <span class="text-xs bg-[rgba(0,240,255,0.1)] px-2 py-0.5 rounded">#${taskId}</span></span>
-                    </div>
-                    <div id="step-processing" class="flex items-center space-x-3 text-sm text-[#00f0ff]">
-                        <div class="w-5 h-5 border-2 border-[#00f0ff] border-t-transparent rounded-full spinner"></div>
-                        <span>正在处理...</span>
-                    </div>`;
+                document.getElementById('progress-steps').innerHTML = '<div class="flex items-center space-x-3 text-sm text-emerald-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span>任务已提交 <span class="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">#' + taskId + '</span></span></div><div id="step-processing" class="flex items-center space-x-3 text-sm text-brand-600"><div class="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div><span>正在处理...</span></div>';
                 btn.textContent = '处理中';
                 pollTaskStatus(taskId);
             } catch (error) {
-                document.getElementById('progress-steps').innerHTML = `
-                    <div class="flex items-center space-x-3 text-sm text-red-400">
-                        <span class="text-lg">✗</span>
-                        <span>提交失败：${error.response?.data?.detail || error.message}</span>
-                    </div>`;
-                btn.disabled = false;
-                btn.textContent = '开始处理';
+                document.getElementById('progress-steps').innerHTML = '<div class="flex items-center space-x-3 text-sm text-red-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span>提交失败：' + (error.response?.data?.detail || error.message) + '</span></div>';
+                btn.disabled = false; btn.textContent = '开始处理'; btn.classList.remove('opacity-60', 'cursor-not-allowed');
                 showToast('任务提交失败', 'error');
             }
         }
-        
+
         async function pollTaskStatus(taskId) {
             try {
-                const response = await axios.get(`${API_BASE}/tasks/${taskId}`);
+                const response = await axios.get(API_BASE + '/tasks/' + taskId);
                 const task = response.data;
-                
-                if (task.status === 'processing') {
-                    setTimeout(() => pollTaskStatus(taskId), 2000);
-                } else if (task.status === 'completed') {
-                    document.getElementById('step-processing').innerHTML = `
-                        <span class="text-[#00ff88] text-lg">✓</span>
-                        <span class="text-[#00ff88]">处理完成</span>`;
+                if (task.status === 'processing') { setTimeout(function() { pollTaskStatus(taskId); }, 2000); }
+                else if (task.status === 'completed') {
+                    document.getElementById('step-processing').innerHTML = '<svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg><span class="text-emerald-700 font-medium">处理完成</span>';
                     const resultDiv = document.getElementById('processing-result');
                     resultDiv.classList.remove('hidden');
                     document.getElementById('result-content').textContent = JSON.stringify(task.result, null, 2);
-                    document.getElementById('process-btn').disabled = false;
-                    document.getElementById('process-btn').textContent = '开始处理';
+                    document.getElementById('process-btn').disabled = false; document.getElementById('process-btn').textContent = '开始处理'; document.getElementById('process-btn').classList.remove('opacity-60', 'cursor-not-allowed');
                     showToast('视频处理完成', 'success');
                 } else if (task.status === 'failed') {
-                    document.getElementById('step-processing').innerHTML = `
-                        <span class="text-red-400 text-lg">✗</span>
-                        <span class="text-red-400">处理失败：${task.result?.error || '未知错误'}</span>`;
-                    document.getElementById('process-btn').disabled = false;
-                    document.getElementById('process-btn').textContent = '开始处理';
+                    document.getElementById('step-processing').innerHTML = '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="text-red-700">处理失败：' + (task.result?.error || '未知错误') + '</span></div>';
+                    document.getElementById('process-btn').disabled = false; document.getElementById('process-btn').textContent = '开始处理'; document.getElementById('process-btn').classList.remove('opacity-60', 'cursor-not-allowed');
                     showToast('视频处理失败', 'error');
                 }
-            } catch (error) {
-                setTimeout(() => pollTaskStatus(taskId), 3000);
-            }
+            } catch (error) { console.error('轮询失败:', error); setTimeout(function() { pollTaskStatus(taskId); }, 3000); }
         }
-        
+
         function showSkeleton(count) {
-            return Array(count).fill(0).map(() => `
-                <div class="glass-card p-6">
-                    <div class="h-5 bg-[rgba(0,240,255,0.1)] rounded w-3/4 mb-4 animate-pulse"></div>
-                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-1/2 mb-2 animate-pulse"></div>
-                    <div class="h-4 bg-[rgba(0,240,255,0.05)] rounded w-full animate-pulse"></div>
-                </div>`).join('');
+            var html = '';
+            for (var i = 0; i < count; i++) {
+                html += '<div class="bg-white rounded-xl border border-gray-200 p-5"><div class="skeleton h-5 rounded w-3/4 mb-3"></div><div class="skeleton h-4 rounded w-1/2 mb-2"></div><div class="skeleton h-4 rounded w-full"></div></div>';
+            }
+            return html;
         }
-        
-        function showEmptyState(type) {
-            const labels = {
-                video: '暂无视频',
-                tool: '暂无工具',
-                search: '未找到匹配结果',
-                error: '加载失败',
-            };
-            const descriptions = {
-                video: '在处理页面添加视频以开始构建知识库',
-                tool: '处理视频后自动提取工具信息',
-                search: '尝试使用不同的关键词搜索',
-                error: '请检查网络连接后重试',
-            };
-            return `
-                <div class="col-span-full text-center py-20">
-                    <p class="text-2xl font-bold text-[rgba(226,232,240,0.2)]">${labels[type]}</p>
-                    <p class="text-[rgba(226,232,240,0.3)] text-sm mt-2">${descriptions[type]}</p>
-                </div>`;
-        }
-        
+
         async function loadVideos() {
             const listDiv = document.getElementById('videos-list');
             listDiv.innerHTML = showSkeleton(6);
             try {
-                const response = await axios.get(`${API_BASE}/videos?limit=100`);
+                const response = await axios.get(API_BASE + '/videos?limit=100');
                 allVideos = response.data.videos;
-                document.getElementById('videos-count-text').textContent = `共 ${allVideos.length} 个视频`;
+                document.getElementById('videos-count-text').textContent = '共 ' + allVideos.length + ' 个视频';
                 renderVideos(allVideos);
             } catch (error) {
-                listDiv.innerHTML = showEmptyState('error');
+                listDiv.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400 text-sm">加载失败：' + error.message + '</div>';
                 showToast('加载视频库失败', 'error');
             }
         }
-        
+
         function renderVideos(videos) {
             const listDiv = document.getElementById('videos-list');
             if (videos.length === 0) {
-                listDiv.innerHTML = showEmptyState('video');
+                listDiv.innerHTML = '<div class="col-span-full text-center py-16"><svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg><p class="text-gray-400 text-sm">暂无视频</p><p class="text-gray-300 text-xs mt-1">在处理页面添加视频以开始构建知识库</p></div>';
                 return;
             }
-            listDiv.innerHTML = videos.map((v, i) => `
-                <div class="glass-card p-6 cursor-pointer fade-in neon-border" style="animation-delay: ${i * 50}ms" onclick="viewVideo(${v.id})">
-                    <div class="flex items-start justify-between mb-3">
-                        <span class="tag-cyber">${v.platform}</span>
-                        <span class="text-[10px] text-[rgba(226,232,240,0.3)]">${new Date(v.created_at).toLocaleDateString('zh-CN')}</span>
-                    </div>
-                    <h3 class="font-bold text-white text-sm mb-2 leading-snug">${v.theme || '未知主题'}</h3>
-                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${v.summary || '无摘要'}</p>
-                    <div class="mt-4 pt-4 border-t border-[rgba(0,240,255,0.05)] flex items-center justify-between">
-                        <span class="text-[10px] text-[rgba(226,232,240,0.3)]">点击查看详情</span>
-                        <svg class="w-4 h-4 text-[rgba(0,240,255,0.5)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                    </div>
-                </div>`).join('');
+            listDiv.innerHTML = videos.map(v => '<div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer fade-in" onclick="viewVideo(' + v.id + ')"><div class="flex items-start justify-between mb-2.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-600">' + (v.platform || '') + '</span><span class="text-[11px] text-gray-400">' + new Date(v.created_at).toLocaleDateString('zh-CN') + '</span></div><h3 class="font-bold text-gray-900 text-sm mb-1.5 leading-snug">' + (v.theme || '未知主题') + '</h3><p class="text-xs text-gray-500 leading-relaxed line-clamp-2">' + (v.summary || '无摘要') + '</p><div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between"><span class="text-[11px] text-gray-400">点击查看详情</span><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div></div>').join('');
         }
-        
+
         function filterVideos() {
             const query = document.getElementById('video-search').value.toLowerCase();
-            const filtered = allVideos.filter(v =>
-                (v.theme || '').toLowerCase().includes(query) ||
-                (v.platform || '').toLowerCase().includes(query) ||
-                (v.summary || '').toLowerCase().includes(query)
-            );
+            const filtered = allVideos.filter(v => (v.theme || '').toLowerCase().includes(query) || (v.platform || '').toLowerCase().includes(query) || (v.summary || '').toLowerCase().includes(query));
             renderVideos(filtered);
         }
-        
+
         async function loadTools() {
             const listDiv = document.getElementById('tools-list');
             listDiv.innerHTML = showSkeleton(6);
             try {
-                const response = await axios.get(`${API_BASE}/tools?limit=100`);
+                const response = await axios.get(API_BASE + '/tools?limit=100');
                 allTools = response.data.tools;
-                document.getElementById('tools-count-text').textContent = `共 ${allTools.length} 个工具`;
+                document.getElementById('tools-count-text').textContent = '共 ' + allTools.length + ' 个工具';
                 renderTools(allTools);
             } catch (error) {
-                listDiv.innerHTML = showEmptyState('error');
+                listDiv.innerHTML = '<div class="col-span-full text-center py-12 text-gray-400 text-sm">加载失败：' + error.message + '</div>';
                 showToast('加载工具库失败', 'error');
             }
         }
-        
+
         function renderTools(tools) {
             const listDiv = document.getElementById('tools-list');
             if (tools.length === 0) {
-                listDiv.innerHTML = showEmptyState('tool');
+                listDiv.innerHTML = '<div class="col-span-full text-center py-16"><svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg><p class="text-gray-400 text-sm">暂无工具</p><p class="text-gray-300 text-xs mt-1">处理视频后自动提取工具信息</p></div>';
                 return;
             }
-            listDiv.innerHTML = tools.map((t, i) => `
-                <div class="glass-card p-6 cursor-pointer fade-in neon-border" style="animation-delay: ${i * 50}ms" onclick="viewTool(${t.id})">
-                    <div class="flex items-start justify-between mb-3">
-                        <h3 class="font-bold text-white text-sm">${t.name}</h3>
-                        <div class="flex space-x-1.5">
-                            ${t.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">付费</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">免费</span>'}
-                            ${t.needs_credential ? '<span class="tag-cyber" style="border-color:rgba(255,50,50,0.3);color:#ff3232;">需凭证</span>' : ''}
-                        </div>
-                    </div>
-                    <p class="text-xs text-[rgba(226,232,240,0.5)] leading-relaxed line-clamp-2">${t.purpose || '无描述'}</p>
-                    <div class="mt-4 pt-4 border-t border-[rgba(0,240,255,0.05)] flex items-center justify-between">
-                        <span class="text-[10px] text-[rgba(226,232,240,0.3)]">查看详情</span>
-                        <svg class="w-4 h-4 text-[rgba(0,240,255,0.5)]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
-                    </div>
-                </div>`).join('');
+            listDiv.innerHTML = tools.map(t => '<div class="bg-white rounded-xl border border-gray-200 p-5 hover:border-brand-300 hover:shadow-md transition-all fade-in cursor-pointer" onclick="viewTool(' + t.id + ')"><div class="flex items-start justify-between mb-2.5"><h3 class="font-bold text-gray-900 text-sm">' + t.name + '</h3><div class="flex space-x-1.5">' + (t.is_paid ? '<span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">付费</span>' : '<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">免费</span>') + (t.needs_credential ? '<span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded">需凭证</span>' : '') + '</div></div><p class="text-xs text-gray-500 leading-relaxed line-clamp-2">' + (t.purpose || '无描述') + '</p><div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between"><span class="text-[11px] text-gray-400">查看详情</span><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div></div>').join('');
         }
-        
+
         function filterTools() {
             const query = document.getElementById('tool-search').value.toLowerCase();
-            const filtered = allTools.filter(t =>
-                (t.name || '').toLowerCase().includes(query) ||
-                (t.purpose || '').toLowerCase().includes(query)
-            );
+            const filtered = allTools.filter(t => (t.name || '').toLowerCase().includes(query) || (t.purpose || '').toLowerCase().includes(query));
             renderTools(filtered);
         }
-        
+
         async function searchKnowledgeBase() {
             const query = document.getElementById('search-query').value.trim();
             const type = document.getElementById('search-type').value;
-            if (!query) {
-                showToast('请输入搜索关键词', 'warning');
-                return;
-            }
+            if (!query) { showToast('请输入搜索关键词', 'warning'); return; }
             const resultsDiv = document.getElementById('search-results');
-            resultsDiv.innerHTML = '<div class="text-[rgba(226,232,240,0.5)] text-sm py-4">搜索中...</div>';
+            resultsDiv.innerHTML = '<div class="text-gray-400 text-sm py-4">搜索中...</div>';
             try {
-                const response = await axios.get(`${API_BASE}/search?query=${encodeURIComponent(query)}&type=${type}`);
+                const response = await axios.get(API_BASE + '/search?query=' + encodeURIComponent(query) + '&type=' + type);
                 const results = response.data.results;
-                if (results.length === 0) {
-                    resultsDiv.innerHTML = showEmptyState('search');
-                    return;
-                }
+                if (results.length === 0) { resultsDiv.innerHTML = '<div class="text-center py-10 text-gray-400 text-sm">未找到匹配结果</div>'; return; }
                 if (type === 'video') {
-                    resultsDiv.innerHTML = `
-                        <h3 class="text-xl font-bold text-white mb-5">找到 ${results.length} 个视频</h3>
-                        <div class="space-y-4">
-                            ${results.map(r => `
-                                <div class="glass-card p-5 cursor-pointer neon-border" onclick="viewVideo(${r.id})">
-                                    <div class="flex items-center space-x-2 mb-2">
-                                        <span class="tag-cyber">${r.platform}</span>
-                                        <span class="text-[10px] text-[rgba(226,232,240,0.3)]">${new Date(r.created_at).toLocaleDateString('zh-CN')}</span>
-                                    </div>
-                                    <h4 class="font-semibold text-white text-sm">${r.theme || '未知主题'}</h4>
-                                    <p class="text-xs text-[rgba(226,232,240,0.5)] mt-1.5 leading-relaxed">${r.summary || '无摘要'}</p>
-                                </div>`).join('')}
-                        </div>`;
+                    resultsDiv.innerHTML = '<h3 class="text-sm font-bold text-gray-900 mb-4">找到 ' + results.length + ' 个视频</h3><div class="space-y-3">' + results.map(r => '<div class="bg-white p-4 rounded-xl border border-gray-200 hover:border-brand-300 transition-colors cursor-pointer" onclick="viewVideo(' + r.id + ')"><div class="flex items-center space-x-2 mb-1.5"><span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-600">' + (r.platform || '') + '</span><span class="text-[11px] text-gray-400">' + new Date(r.created_at).toLocaleDateString('zh-CN') + '</span></div><h4 class="font-semibold text-gray-900 text-sm">' + (r.theme || '未知主题') + '</h4><p class="text-xs text-gray-500 mt-1.5 leading-relaxed">' + (r.summary || '无摘要') + '</p></div>').join('') + '</div>';
                 } else {
-                    resultsDiv.innerHTML = `
-                        <h3 class="text-xl font-bold text-white mb-5">找到 ${results.length} 个工具</h3>
-                        <div class="space-y-4">
-                            ${results.map(r => `
-                                <div class="glass-card p-5 cursor-pointer neon-border" onclick="viewTool(${r.id})">
-                                    <div class="flex items-center justify-between mb-2">
-                                        <h4 class="font-semibold text-white text-sm">${r.name}</h4>
-                                        ${r.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">付费</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">免费</span>'}
-                                    </div>
-                                    <p class="text-xs text-[rgba(226,232,240,0.5)]">${r.purpose || '无描述'}</p>
-                                </div>`).join('')}
-                        </div>`;
+                    resultsDiv.innerHTML = '<h3 class="text-sm font-bold text-gray-900 mb-4">找到 ' + results.length + ' 个工具</h3><div class="space-y-3">' + results.map(r => '<div class="bg-white p-4 rounded-xl border border-gray-200 hover:border-brand-300 transition-colors cursor-pointer" onclick="viewTool(' + r.id + ')"><div class="flex items-center justify-between mb-1.5"><h4 class="font-semibold text-gray-900 text-sm">' + r.name + '</h4>' + (r.is_paid ? '<span class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">付费</span>' : '<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">免费</span>') + '</div><p class="text-xs text-gray-500">' + (r.purpose || '无描述') + '</p></div>').join('') + '</div>';
                 }
-            } catch (error) {
-                resultsDiv.innerHTML = `<div class="text-red-400 text-sm py-4">搜索失败：${error.message}</div>`;
-            }
+            } catch (error) { resultsDiv.innerHTML = '<div class="text-red-500 text-sm py-4">搜索失败：' + error.message + '</div>'; }
         }
-        
+
         async function loadStats() {
             const contentDiv = document.getElementById('stats-content');
             contentDiv.innerHTML = showSkeleton(3);
             try {
-                const response = await axios.get(`${API_BASE}/stats`);
+                const response = await axios.get(API_BASE + '/stats');
                 const stats = response.data;
                 const platformData = stats.platform_stats || [];
-                
-                let platformHtml = '';
+                var platformHtml = '';
                 if (platformData.length > 0) {
-                    const maxCount = Math.max(...platformData.map(p => p.count));
-                    platformHtml = platformData.map(p => `
-                        <div class="flex items-center space-x-3">
-                            <span class="text-sm text-[rgba(226,232,240,0.7)] w-16 truncate">${p.platform}</span>
-                            <div class="flex-1 bg-[rgba(0,0,0,0.4)] rounded-full h-2 overflow-hidden">
-                                <div class="bg-gradient-to-r from-[#0080ff] to-[#00f0ff] h-full rounded-full transition-all duration-500" style="width: ${(p.count / maxCount * 100).toFixed(0)}%; box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);"></div>
-                            </div>
-                            <span class="text-sm font-bold text-[#00f0ff] w-8 text-right">${p.count}</span>
-                        </div>`).join('');
-                } else {
-                    platformHtml = '<div class="text-[rgba(226,232,240,0.3)] text-sm py-2">暂无数据</div>';
-                }
-                
-                contentDiv.innerHTML = `
-                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.1s;">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider">视频数量</span>
-                            <div class="w-10 h-10 bg-[rgba(0,128,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(0, 128, 255, 0.3);">
-                                <svg class="w-5 h-5 text-[#0080ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                            </div>
-                        </div>
-                        <p class="text-5xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);">${stats.video_count}</p>
-                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2">已处理视频总数</p>
-                    </div>
-                    <div class="stat-card p-8 fade-in" style="animation-delay: 0.2s;">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider">工具数量</span>
-                            <div class="w-10 h-10 bg-[rgba(180,0,255,0.2)] rounded-xl flex items-center justify-center" style="box-shadow: 0 0 15px rgba(180, 0, 255, 0.3);">
-                                <svg class="w-5 h-5 text-[#b400ff]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg>
-                            </div>
-                        </div>
-                        <p class="text-5xl font-black text-white tracking-wider" style="text-shadow: 0 0 20px rgba(180, 0, 255, 0.3);">${stats.tool_count}</p>
-                        <p class="text-[10px] text-[rgba(226,232,240,0.3)] mt-2">已识别工具总数</p>
-                    </div>
-                    <div class="stat-card p-8 md:col-span-3 lg:col-span-1 fade-in" style="animation-delay: 0.3s;">
-                        <h3 class="text-[11px] font-bold text-[rgba(226,232,240,0.5)] tracking-wider mb-6">平台分布</h3>
-                        <div class="space-y-4">${platformHtml}</div>
-                    </div>`;
+                    const maxCount = Math.max.apply(null, platformData.map(p => p.count));
+                    platformHtml = platformData.map(p => '<div class="flex items-center space-x-3"><span class="text-sm text-gray-600 w-16 truncate">' + p.platform + '</span><div class="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden"><div class="bg-brand-500 h-full rounded-full" style="width: ' + (p.count / maxCount * 100).toFixed(0) + '%"></div></div><span class="text-sm font-semibold text-gray-700 w-8 text-right">' + p.count + '</span></div>').join('');
+                } else { platformHtml = '<div class="text-gray-400 text-sm py-2">暂无数据</div>'; }
+                contentDiv.innerHTML = '<div class="bg-white rounded-xl border border-gray-200 p-6"><div class="flex items-center justify-between mb-1"><span class="text-sm font-semibold text-gray-500">视频数量</span><svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></div><p class="text-3xl font-extrabold text-gray-900">' + stats.video_count + '</p></div><div class="bg-white rounded-xl border border-gray-200 p-6"><div class="flex items-center justify-between mb-1"><span class="text-sm font-semibold text-gray-500">工具数量</span><svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17l-5.1-5.1a1.5 1.5 0 010-2.12l.88-.88a1.5 1.5 0 012.12 0L12 9.75l5.66-5.66a1.5 1.5 0 012.12 0l.88.88a1.5 1.5 0 010 2.12l-5.1 5.1a1.5 1.5 0 01-2.12 0z"/></svg></div><p class="text-3xl font-extrabold text-gray-900">' + stats.tool_count + '</p></div><div class="bg-white rounded-xl border border-gray-200 p-6 md:col-span-3"><h3 class="text-sm font-semibold text-gray-500 mb-5">平台分布</h3><div class="space-y-3">' + platformHtml + '</div></div>';
             } catch (error) {
-                contentDiv.innerHTML = `<div class="col-span-full text-red-400 text-sm py-4">加载失败：${error.message}</div>`;
+                contentDiv.innerHTML = '<div class="col-span-full text-red-500 text-sm py-4">加载失败：' + error.message + '</div>';
                 showToast('加载统计数据失败', 'error');
             }
         }
-        
+
         async function viewVideo(videoId) {
             try {
-                const response = await axios.get(`${API_BASE}/videos/${videoId}`);
+                const response = await axios.get(API_BASE + '/videos/' + videoId);
                 const v = response.data;
+                const analysis = v.analysis_result || {};
                 const tools = v.tools || [];
-                
-                const modal = document.createElement('div');
+                var modal = document.createElement('div');
                 modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
-                modal.innerHTML = `
-                    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
-                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
-                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
-                            <h2 class="text-xl font-bold text-white" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">视频详情</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#00f0ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,240,255,0.05)]">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                        <div class="p-8 space-y-6">
-                            <div>
-                                <span class="tag-cyber">${v.platform}</span>
-                                <h3 class="text-2xl font-bold text-white mt-3">${v.theme || '未知主题'}</h3>
-                                <p class="text-sm text-[rgba(226,232,240,0.5)] mt-1.5">${new Date(v.created_at).toLocaleString('zh-CN')}</p>
-                            </div>
-                            <div>
-                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2">摘要</h4>
-                                <p class="text-sm text-[rgba(226,232,240,0.8)] leading-relaxed">${v.summary || '无'}</p>
-                            </div>
-                            ${tools.length > 0 ? `
-                            <div>
-                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2.5">涉及工具</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    ${tools.map(t => `<span class="tag-cyber">${t.name}</span>`).join('')}
-                                </div>
-                            </div>` : ''}
-                        </div>
-                    </div>`;
+                modal.innerHTML = '<div class="fixed inset-0 bg-black/50" onclick="this.parentElement.remove()"></div><div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in"><div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl"><h2 class="text-lg font-bold text-gray-900">视频详情</h2><button onclick="this.closest(\'.fixed\').remove()" class="text-gray-400 hover:text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="p-6 space-y-5"><div><span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-[11px] font-semibold text-gray-600">' + (v.platform || '') + '</span><h3 class="text-xl font-extrabold text-gray-900 mt-2">' + (v.theme || '未知主题') + '</h3><p class="text-sm text-gray-500 mt-1">' + new Date(v.created_at).toLocaleString('zh-CN') + '</p></div><div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">摘要</h4><p class="text-sm text-gray-700 leading-relaxed">' + (v.summary || '无') + '</p></div>' + (tools.length > 0 ? '<div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">涉及工具</h4><div class="flex flex-wrap gap-1.5">' + tools.map(t => '<span class="inline-flex items-center px-2.5 py-1 bg-brand-50 text-brand-700 text-xs font-semibold rounded-lg">' + t.name + '</span>').join('') + '</div></div>' : '') + (analysis.tools && analysis.tools.length > 0 ? '<div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">安装命令</h4><div class="space-y-1.5">' + analysis.tools.slice(0, 5).map(t => t.install_cmd ? '<code class="block bg-gray-900 text-emerald-400 px-3 py-2 rounded-lg text-[12px] font-mono">' + t.install_cmd + '</code>' : '').filter(Boolean).join('') + '</div></div>' : '') + '</div></div>';
                 document.body.appendChild(modal);
-            } catch (error) {
-                showToast('加载视频详情失败', 'error');
-            }
+            } catch (error) { showToast('加载视频详情失败', 'error'); }
         }
-        
+
         async function viewTool(toolId) {
             try {
-                const response = await axios.get(`${API_BASE}/tools/${toolId}`);
+                const response = await axios.get(API_BASE + '/tools/' + toolId);
                 const t = response.data;
                 const videos = t.videos || [];
-                
-                const modal = document.createElement('div');
+                var modal = document.createElement('div');
                 modal.className = 'fixed inset-0 z-[90] flex items-center justify-center p-4';
-                modal.innerHTML = `
-                    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200" onclick="this.parentElement.remove()"></div>
-                    <div class="relative glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in">
-                        <div class="sticky top-0 bg-[rgba(10,14,23,0.95)] backdrop-blur-lg border-b border-[rgba(0,240,255,0.1)] px-8 py-5 flex items-center justify-between rounded-t-2xl">
-                            <h2 class="text-xl font-bold text-white" style="text-shadow: 0 0 10px rgba(255,255,255,0.3);">工具详情</h2>
-                            <button onclick="this.closest('.fixed').remove()" class="text-[rgba(226,232,240,0.5)] hover:text-[#00f0ff] transition-colors p-1.5 rounded-lg hover:bg-[rgba(0,240,255,0.05)]">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
-                        </div>
-                        <div class="p-8 space-y-6">
-                            <div>
-                                <div class="flex items-center space-x-2 mb-2">
-                                    <h3 class="text-2xl font-bold text-white">${t.name}</h3>
-                                    ${t.is_paid ? '<span class="tag-cyber" style="border-color:rgba(255,180,0,0.3);color:#ffb400;">付费</span>' : '<span class="tag-cyber" style="border-color:rgba(0,255,136,0.3);color:#00ff88;">免费</span>'}
-                                    ${t.needs_credential ? '<span class="tag-cyber" style="border-color:rgba(255,50,50,0.3);color:#ff3232;">需凭证</span>' : ''}
-                                </div>
-                                <p class="text-sm text-[rgba(226,232,240,0.7)] leading-relaxed">${t.purpose || '无描述'}</p>
-                            </div>
-                            ${t.install_commands && t.install_commands.length > 0 ? `
-                            <div>
-                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2.5">安装命令</h4>
-                                <div class="space-y-2">
-                                    ${t.install_commands.map(c => `<code class="code-block block p-4 rounded-lg text-[12px] overflow-x-auto">$ ${c}</code>`).join('')}
-                                </div>
-                            </div>` : ''}
-                            ${videos.length > 0 ? `
-                            <div>
-                                <h4 class="text-xs font-bold text-[rgba(226,232,240,0.4)] mb-2.5">来源视频</h4>
-                                <div class="space-y-2">
-                                    ${videos.map(v => `<div class="text-sm text-[rgba(226,232,240,0.7)] cursor-pointer hover:text-[#00f0ff] transition-colors" onclick="viewVideo(${v.id}); this.closest('.fixed').remove();">${v.theme || '未知'}</div>`).join('')}
-                                </div>
-                            </div>` : ''}
-                        </div>
-                    </div>`;
+                modal.innerHTML = '<div class="fixed inset-0 bg-black/50" onclick="this.parentElement.remove()"></div><div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto fade-in"><div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl"><h2 class="text-lg font-bold text-gray-900">工具详情</h2><button onclick="this.closest(\'.fixed\').remove()" class="text-gray-400 hover:text-gray-600 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></div><div class="p-6 space-y-5"><div><div class="flex items-center space-x-2 mb-2"><h3 class="text-xl font-extrabold text-gray-900">' + t.name + '</h3>' + (t.is_paid ? '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded">付费</span>' : '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">免费</span>') + (t.needs_credential ? '<span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded">需凭证</span>' : '') + '</div><p class="text-sm text-gray-600 leading-relaxed">' + (t.purpose || '无描述') + '</p></div>' + (t.install_commands && t.install_commands.length > 0 ? '<div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">安装命令</h4><div class="space-y-1.5">' + t.install_commands.map(c => '<code class="block bg-gray-900 text-emerald-400 px-3 py-2 rounded-lg text-[12px] font-mono">' + c + '</code>').join('') + '</div></div>' : '') + (t.config_steps && t.config_steps.length > 0 ? '<div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">配置步骤</h4><ol class="list-decimal list-inside space-y-1">' + t.config_steps.map(s => '<li class="text-sm text-gray-700">' + s + '</li>').join('') + '</ol></div>' : '') + (t.warnings && t.warnings.length > 0 ? '<div class="bg-red-50 border border-red-200 rounded-lg p-4"><h4 class="text-xs font-bold text-red-600 uppercase tracking-wider mb-2">注意事项</h4><ul class="list-disc list-inside space-y-0.5">' + t.warnings.map(w => '<li class="text-sm text-red-700">' + w + '</li>').join('') + '</ul></div>' : '') + (videos.length > 0 ? '<div><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">来源视频</h4><div class="space-y-1.5">' + videos.map(v => '<div class="text-sm text-gray-600 cursor-pointer hover:text-brand-600" onclick="viewVideo(' + v.id + '); this.closest(\'.fixed\').remove();">' + (v.theme || '未知') + '</div>').join('') + '</div></div>' : '') + '</div></div>';
                 document.body.appendChild(modal);
-            } catch (error) {
-                showToast('加载工具详情失败', 'error');
-            }
+            } catch (error) { showToast('加载工具详情失败', 'error'); }
         }
-        
+
         async function checkApiHealth() {
             const dot = document.getElementById('api-status-dot');
             const text = document.getElementById('api-status-text');
             try {
-                await axios.get(`${API_BASE}/stats`, { timeout: 3000 });
-                dot.className = 'pulse-dot bg-[#00ff88] text-[#00ff88]';
+                await axios.get(API_BASE + '/stats', { timeout: 3000 });
+                dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
                 text.textContent = 'API 已连接';
-                text.className = 'text-[10px] text-[#00ff88]';
+                text.className = 'text-[11px] text-gray-400';
             } catch {
-                dot.className = 'pulse-dot bg-red-500 text-red-500';
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
                 text.textContent = 'API 未连接';
-                text.className = 'text-[10px] text-red-500';
+                text.className = 'text-[11px] text-red-400';
             }
         }
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            initParticles();
+
+        document.addEventListener('DOMContentLoaded', function() {
             showPage('process');
             checkApiHealth();
             setInterval(checkApiHealth, 10000);

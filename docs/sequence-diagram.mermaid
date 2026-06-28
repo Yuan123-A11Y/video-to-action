@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant U as User (Browser)
+    participant F as Frontend (React)
+    participant A as API (FastAPI)
+    participant S as AuthService
+    participant R as Redis
+    participant D as Database (SQLite)
+
+    U->>F: 访问 /login 页面
+    F->>U: 显示登录表单
+
+    U->>F: 提交用户名 + 密码
+    F->>F: 表单验证
+
+    F->>A: POST /api/auth/login
+    Note over F,A: {username, password}
+
+    A->>S: login(username, password)
+    S->>D: 查询用户 (SELECT * FROM users WHERE username=?)
+    D-->>S: 返回用户信息
+
+    alt 用户不存在或密码错误
+        S-->>A: 抛出 AuthenticationError
+        A-->>F: 401 Unauthorized
+        F-->>U: 显示错误提示
+    else 认证成功
+        S->>S: 验证密码 (bcrypt.checkpw)
+        S->>S: 生成 Access Token (JWT)
+        S->>S: 生成 Refresh Token (JWT)
+        S->>R: 存储 Refresh Token ID (可选，用于登出)
+        S-->>A: 返回 AuthResponse
+        A-->>F: 200 OK
+        Note over A,F: {access_token, refresh_token, expires_in}
+
+        F->>F: 保存 token 到 localStorage
+        F->>F: 更新 AuthContext (isAuthenticated=true)
+        F->>U: 重定向到首页 (/)
+    end

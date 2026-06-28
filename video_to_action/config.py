@@ -7,6 +7,17 @@ import yaml
 
 DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / "config" / "settings.yaml"
 
+DEFAULT_CONFIG = {
+    "llm": {
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "base_url": "https://api.openai.com/v1",
+        "api_key": "",
+    },
+    "automation_level": "confirm",
+    "output_dir": "./outputs",
+}
+
 
 def _expand_env_vars(obj):
     """递归展开配置中的环境变量引用 ${VAR_NAME}。"""
@@ -62,3 +73,18 @@ def get_output_dir(config: dict) -> Path:
     output_dir = Path(config.get("output_dir", "outputs"))
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
+
+
+def save_config(config: dict, config_path: Path | str) -> None:
+    """保存配置到 YAML 文件。
+
+    Args:
+        config: 配置字典。
+        config_path: 配置文件路径。
+    """
+    config_path = Path(config_path)
+    # 确保目录存在
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(config_path, "w", encoding="utf-8") as f:
+        yaml.dump(config, f, allow_unicode=True, default_flow_style=False)

@@ -74,8 +74,8 @@ class Executor:
                 return True, "安装系统级软件"
 
         if "modify_system_env" in require_confirm:
-            # 匹配修改系统环境变量的命令
-            if re.search(r"setx|setenv|export\s+PATH|修改环境变量", command_lower):
+            # 匹配修改系统环境变量的命令（command_lower 已转小写，用 path）
+            if re.search(r"setx|setenv|export\s+path|修改环境变量", command_lower):
                 return True, "修改系统环境变量"
 
         return False, ""
@@ -91,12 +91,9 @@ class Executor:
     def _is_valid_install_command(self, command: str) -> bool:
         """校验命令是否是合理的安装命令，而非启动/运行命令。"""
         cmd_lower = command.lower().strip()
-        # npx 不带 install 参数时，是临时运行而非安装
+        # npx 用于临时运行包，不是安装命令，但也是合法命令，不应 warning
         if cmd_lower.startswith("npx "):
-            pkg = cmd_lower[4:].strip().split()[0] if len(cmd_lower) > 4 else ""
-            # npx <pkg> 是运行，npx install <pkg> 不存在（npx 不用 install）
-            # 合理的 npx 安装方式是通过 npm install -g
-            return False
+            return True
         for prefix in INSTALL_PREFIXES:
             if cmd_lower.startswith(prefix):
                 return True
@@ -115,7 +112,12 @@ class Executor:
             return {
                 "success": False,
                 "stdout": "",
-                "stderr": "命令被拦截：包含危险操作关键词",
+                "stderr": (
+                    "命令被拦截：包含危险操作关键词。\n"
+                    "问题：命令中包含 forbidden_keywords 配置中的关键词。\n"
+                    "建议：请检查命令是否包含 rm -rf /、dd if= 等危险操作。\n"
+                    "如需允许该命令，请修改 config/safety.yaml 中的 forbidden_keywords。"
+                ),
                 "command": command,
             }
 
@@ -149,15 +151,17 @@ class Executor:
 
         # 校验命令格式（警告但不阻止，LLM 可能生成不完美命令）
         if not self._is_valid_install_command(command):
-            logger.warning(
-                "命令可能格式不正确（非标准安装命令）：%s", command
-            )
+            logger.warning("命令可能格式不正确（非标准安装命令）：%s", command)
 
-        # 执行命令（带超时）
+        # 执行命令（使用 shell=False 避免命令注入，带超时）
         try:
+            import shlex
+
+            # shell=False 时需要将命令字符串拆分为参数列表
+            args = shlex.split(command)
             result = subprocess.run(
-                command,
-                shell=True,
+                args,
+                shell=False,
                 capture_output=True,
                 encoding="utf-8",
                 errors="ignore",
@@ -167,7 +171,13 @@ class Executor:
             return {
                 "success": False,
                 "stdout": "",
-                "stderr": f"命令执行超时（{self.timeout}秒），已被终止。",
+                "stderr": (
+                    f"命令执行超时（{self.timeout}秒），已被终止。\n"
+                    f"问题：命令在 {self.timeout} 秒内未完成执行。\n"
+                    f"建议：1) 增加超时时间（修改 config/settings.yaml 中的 safety.command_timeout）\n"
+                    f"      2) 检查命令是否需要交互式输入（如需，请手动执行）\n"
+                    f"      3) 检查命令是否卡住（可手动运行该命令测试）"
+                ),
                 "command": command,
                 "timeout": True,
             }
@@ -175,8 +185,15 @@ class Executor:
             return {
                 "success": False,
                 "stdout": "",
-                "stderr": f"命令执行异常：{e}",
+                "stderr": (
+                    f"命令执行异常：{e}\n"
+                    f"问题：命令执行过程中出现未预期的错误。\n"
+                    f"建议：1) 检查命令格式是否正确（路径、参数等）\n"
+                    f"      2) 检查命令是否需要安装依赖（如 pip install xxx）\n"
+                    f"      3) 查看日志文件获取详细错误信息"
+                ),
                 "command": command,
+                "exception": str(e),
             }
 
         return {

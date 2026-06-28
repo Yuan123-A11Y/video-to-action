@@ -142,25 +142,68 @@ class GreenVideoDownloader:
                 finally:
                     browser.close()
 
-            # 下载视频
-            response = requests.get(download_url, timeout=60)
+            # 下载视频（流式下载，避免大文件OOM）
+            import uuid
+
+            filename = f"{platform}_greenvideo_{uuid.uuid4().hex[:8]}.mp4"
+            output_path = self.output_dir / filename
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+
+            # 构造请求头（携带 Referer 和 Cookie，部分站点需要）
+            headers = {}
+            platform_cfg = self.config.get("platforms", {}).get(platform, {})
+            cfg_headers = platform_cfg.get("headers", {})
+            if cfg_headers:
+                headers.update(cfg_headers)
+            # 如果没有配置 Referer，默认使用平台页面
+            if "Referer" not in headers:
+                headers["Referer"] = platform_cfg.get("greenvideo_url", platform_url)
+
+            # 携带 Cookie（从 config 读取）
+            cookies = {}
+            raw_cookies = platform_cfg.get("cookies", {}).get("raw", {})
+            if raw_cookies:
+                cookies.update(raw_cookies)
+
+            response = requests.get(
+                download_url,
+                timeout=60,
+                stream=True,
+                headers=headers or None,
+                cookies=cookies or None,
+            )
             response.raise_for_status()
 
             content_type = response.headers.get("Content-Type", "").lower()
-            if "text/html" in content_type or len(response.content) < 1024:
+            if "text/html" in content_type:
                 return {
                     "success": False,
                     "platform": platform,
                     "method": "greenvideo",
                     "output_path": "",
                     "stdout": "",
-                    "stderr": "下载链接返回非视频内容",
+                    "stderr": "下载链接返回非视频内容（可能是解析失败）",
                 }
 
-            filename = f"{platform}_greenvideo_{int(time.time())}.mp4"
-            output_path = self.output_dir / filename
+            # 流式写入文件
+            downloaded_size = 0
             with open(output_path, "wb") as f:
-                f.write(response.content)
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+
+            # 检查文件大小（下载完成后检查）
+            if downloaded_size < 10240:  # 10KB 阈值
+                output_path.unlink(missing_ok=True)
+                return {
+                    "success": False,
+                    "platform": platform,
+                    "method": "greenvideo",
+                    "output_path": "",
+                    "stdout": "",
+                    "stderr": "下载的文件过小，可能不是有效视频",
+                }
 
             return {
                 "success": True,

@@ -23,11 +23,15 @@ target/
 
 # 环境密钥 / 敏感文件
 .env
+.env.*
 .cookies.json
 *.pem
 secret.json
 config/douyin_cookies.txt
 config/settings.yaml
+config/bilibili_cookies.json
+config/bilibili_cookies.txt
+config/douyin_cookies.json
 
 # IDE
 .idea/
@@ -42,6 +46,48 @@ desktop.ini
 
 # 日志
 *.log
+logs/
+.api.log
+.coverage
+
+# 数据库
+data/*.db
+database/*.db
+
+# 中间件
+api/middleware/
+
+# Auth
+api/auth/
+
+# Cache
+api/cache.py
+api/ws_manager.py
+
+# API 输出（不应提交）
+api/outputs/
+api/data/
+
+# 报告（移动到 docs/reports/）
+*_REPORT.md
+*_SUMMARY.md
+test_report_*.md
+benchmark_log.txt
+flake8_report.txt
+
+# 调试/测试脚本（移动到 tools/debug/）
+debug_*.py
+test_*.py
+fix_*.py
+quick_*.py
+convert_*.py
+init_*.py
+
+# 临时文件
+*.txt
+nul
+.pytest_cache/
+.ruff_cache/
 
 # 工具 / 第三方源码（douyin-downloader 作为子模块或外部工具，不提交二进制/缓存）
 tools/douyin-downloader/__pycache__/

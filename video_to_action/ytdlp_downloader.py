@@ -1,12 +1,12 @@
 """基于 yt-dlp 的视频下载器，支持多平台和断点续传。"""
 
-import shutil
 from pathlib import Path
 from typing import Any
 
 import yt_dlp
 from rich.progress import BarColumn, DownloadColumn, Progress, TransferSpeedColumn
 
+from video_to_action.exceptions import DownloadError
 from video_to_action.utils import detect_platform
 
 
@@ -28,22 +28,25 @@ class YtDlpDownloader:
         self._check_dependency()
 
     def _check_dependency(self) -> None:
-        if shutil.which("yt-dlp") is None:
-            raise EnvironmentError("未找到 yt-dlp，请先安装: pip install yt-dlp")
+        # 检查 yt-dlp Python 包是否可用（类内部使用 Python API，非 CLI）
+        try:
+            import yt_dlp  # noqa: F401
+        except ImportError:
+            raise DownloadError(message="未找到 yt-dlp Python 包", suggestion="请先安装: pip install yt-dlp")
 
     def _platform_settings(self, url: str) -> tuple[dict[str, str], dict[str, Any]]:
         platform = detect_video_platform(url)
         platform_cfg = self.platforms.get(platform, {})
-        
+
         # 请求头：全局 + 平台特定
         merged_headers = dict(self.headers)
         merged_headers.update(platform_cfg.get("headers", {}))
-        
+
         # Cookie：优先使用平台特定配置，否则使用全局配置
         # 配置路径：download.cookies.<platform> 或 download.cookies
         cookies_config = self.download_config.get("cookies", {})
         platform_cookies = cookies_config.get(platform)
-        
+
         if platform_cookies is not None:
             merged_cookies = dict(platform_cookies)
         else:
@@ -52,7 +55,7 @@ class YtDlpDownloader:
                 merged_cookies = dict(cookies_config)
             else:
                 merged_cookies = {}
-        
+
         return merged_headers, merged_cookies
 
     def _domain_for_url(self, url: str) -> str:
@@ -165,20 +168,20 @@ class YtDlpDownloader:
                 # 假设配置文件在 config/settings.yaml，项目根目录是其父目录的父目录
                 project_root = Path(__file__).resolve().parent.parent
                 cookie_path = project_root / cookie_file
-            
+
             if cookie_path.exists():
                 ydl_opts["cookiefile"] = str(cookie_path)
                 print(f"[yt-dlp] 使用Cookie文件：{cookie_path}")
             else:
                 print(f"[yt-dlp] 警告：Cookie文件不存在：{cookie_path}")
-        
+
         # 其次使用原始Cookie（会写入临时文件）
         elif raw_cookies:
             raw_cookie_path = self._write_raw_cookies_file(url, raw_cookies)
             if raw_cookie_path:
                 ydl_opts["cookiefile"] = str(raw_cookie_path)
                 print(f"[yt-dlp] 使用原始Cookie（已写入：{raw_cookie_path}）")
-        
+
         # 最后尝试从浏览器读取
         elif browser:
             ydl_opts["cookiesfrombrowser"] = (browser,)

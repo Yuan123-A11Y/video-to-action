@@ -8,9 +8,23 @@ from rich.logging import RichHandler
 
 # 平台检测规则
 PLATFORM_PATTERNS = {
-    "douyin": [r"\bdouyin\.com", r"\biesdouyin\.com", r"\bv\.douyin\.com"],
-    "bilibili": [r"\bbilibili\.com", r"^https?://b23\.tv"],
-    "youtube": [r"\byoutube\.com", r"\byoutu\.be"],
+    "douyin": [
+        r"\bdouyin\.com",
+        r"\biesdouyin\.com",  # 分享短链接
+        r"\bv\.douyin\.com",  # 短链接
+        r"\vtiktok\.com",     # TikTok（抖音国际版）
+    ],
+    "bilibili": [
+        r"\bbilibili\.com",
+        r"\bb23\.tv",         # B站短链接
+        r"\bacg\.tv",        # B站短链接（旧）
+        r"\bspace\.bilibili\.com",  # B站空间
+    ],
+    "youtube": [
+        r"\byoutube\.com",
+        r"\byoutu\.be",
+        r"\byoutube-nocookie\.com",
+    ],
 }
 
 
@@ -87,3 +101,28 @@ def get_logger(name: str) -> logging.Logger:
         配置好的 logger 实例。
     """
     return logging.getLogger(name)
+
+
+def format_duration(seconds: float | int) -> str:
+    """将秒数格式化为人类可读的时间字符串。
+
+    Args:
+        seconds: 秒数（可以是小数）。
+
+    Returns:
+        格式化的时间字符串，如 "1:23" 或 "1:23:45"。
+
+    Examples:
+        >>> format_duration(83)
+        '1:23'
+        >>> format_duration(3725)
+        '1:02:05'
+    """
+    seconds = int(seconds)
+    if seconds < 3600:
+        return f"{seconds // 60}:{seconds % 60:02d}"
+    else:
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        return f"{hours}:{minutes:02d}:{secs:02d}"

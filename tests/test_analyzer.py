@@ -1,15 +1,14 @@
 from video_to_action.analyzer import Analyzer
+from video_to_action.json_parser import parse_json_response
 
 
 def test_parse_json_response_valid():
-    analyzer = Analyzer({})
-    data = analyzer._parse_json_response('{"theme": "test"}')
+    data = parse_json_response('{"theme": "test"}')
     assert data["theme"] == "test"
 
 
 def test_parse_json_response_with_markdown():
-    analyzer = Analyzer({})
-    data = analyzer._parse_json_response('```json\n{"theme": "test"}\n```')
+    data = parse_json_response('```json\n{"theme": "test"}\n```')
     assert data["theme"] == "test"
 
 

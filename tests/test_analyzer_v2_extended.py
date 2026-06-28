@@ -10,12 +10,12 @@ Analyzer V2 模块单元测试。
 
 import json
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
 from video_to_action.analyzer_v2 import AnalyzerV2
+from video_to_action.json_parser import parse_json_response
 
 
 class TestAnalyzerV2Prompt:
@@ -54,28 +54,26 @@ class TestAnalyzerV2Prompt:
         text_start = prompt.find("视频转录文本：")
         text_end = prompt.find("\n\n请输出严格的JSON")
         if text_start != -1 and text_end != -1:
-            extracted_text = prompt[text_start + 7:text_end]
+            extracted_text = prompt[text_start + 7 : text_end]
             assert len(extracted_text) <= 8000 + 20  # 8000 + 截断提示
 
 
 class TestAnalyzerV2ParseJson:
-    """测试 AnalyzerV2 JSON 解析功能。"""
-
-    def setup_method(self):
-        self.config = {"llm": {"vision_enabled": False}}
-        self.analyzer = AnalyzerV2(self.config)
+    """测试 AnalyzerV2 JSON 解析功能（使用 json_parser.parse_json_response）。"""
 
     def test_parse_valid_json(self):
         """测试解析合法 JSON。"""
-        response = json.dumps({
-            "theme": "测试",
-            "summary": "测试摘要",
-            "tools": [],
-            "needs_credential": False,
-            "is_paid": False,
-            "alternative_tools": []
-        })
-        result = self.analyzer._parse_json_response(response)
+        response = json.dumps(
+            {
+                "theme": "测试",
+                "summary": "测试摘要",
+                "tools": [],
+                "needs_credential": False,
+                "is_paid": False,
+                "alternative_tools": [],
+            }
+        )
+        result = parse_json_response(response)
         assert result["theme"] == "测试"
         assert result["summary"] == "测试摘要"
 
@@ -84,24 +82,24 @@ class TestAnalyzerV2ParseJson:
         response = """```json
         {"theme": "测试", "summary": "摘要", "tools": [], "needs_credential": false, "is_paid": false, "alternative_tools": []}
         ```"""
-        result = self.analyzer._parse_json_response(response)
+        result = parse_json_response(response)
         assert result["theme"] == "测试"
 
     def test_parse_json_with_trailing_comma(self):
         """测试解析包含 trailing comma 的 JSON（自动修复）。"""
         response = '{"theme": "测试", "tools": [{"name": "test"},],}'
-        result = self.analyzer._parse_json_response(response)
+        result = parse_json_response(response)
         assert result["theme"] == "测试"
 
     def test_parse_empty_response(self):
         """测试解析空响应抛出异常。"""
         with pytest.raises(ValueError, match="空响应"):
-            self.analyzer._parse_json_response("")
+            parse_json_response("")
 
     def test_parse_invalid_json(self):
         """测试解析非法 JSON 抛出异常。"""
-        with pytest.raises(ValueError, match="无法解析"):
-            self.analyzer._parse_json_response("这不是 JSON")
+        with pytest.raises(ValueError, match="无法"):
+            parse_json_response("这不是 JSON")
 
 
 class TestAnalyzerV2Cache:
@@ -198,24 +196,26 @@ class TestAnalyzerV2Analyze:
     def test_analyze_success(self, mock_call_llm):
         """测试分析成功。"""
         # _call_llm 应该返回 JSON 字符串
-        mock_call_llm.return_value = json.dumps({
-            "theme": "Python环境配置",
-            "summary": "介绍pyenv安装",
-            "tools": [
-                {
-                    "name": "pyenv",
-                    "purpose": "Python版本管理",
-                    "links": [],
-                    "install_commands": ["curl https://pyenv.run | bash"],
-                    "config_steps": [],
-                    "run_commands": [],
-                    "warnings": [],
-                }
-            ],
-            "needs_credential": False,
-            "is_paid": False,
-            "alternative_tools": [],
-        })
+        mock_call_llm.return_value = json.dumps(
+            {
+                "theme": "Python环境配置",
+                "summary": "介绍pyenv安装",
+                "tools": [
+                    {
+                        "name": "pyenv",
+                        "purpose": "Python版本管理",
+                        "links": [],
+                        "install_commands": ["curl https://pyenv.run | bash"],
+                        "config_steps": [],
+                        "run_commands": [],
+                        "warnings": [],
+                    }
+                ],
+                "needs_credential": False,
+                "is_paid": False,
+                "alternative_tools": [],
+            }
+        )
 
         analyzer = AnalyzerV2(self.config)
         result = analyzer.analyze("介绍pyenv安装Python版本", "B站")
@@ -229,24 +229,26 @@ class TestAnalyzerV2Analyze:
     @patch.object(AnalyzerV2, "_call_llm")
     def test_analyze_with_run_commands(self, mock_call_llm):
         """测试分析结果包含 run_commands（区分安装和启动）。"""
-        mock_call_llm.return_value = json.dumps({
-            "theme": "Claude Code使用",
-            "summary": "介绍Claude Code安装和使用",
-            "tools": [
-                {
-                    "name": "claude",
-                    "purpose": "AI编程助手",
-                    "links": [],
-                    "install_commands": ["npm install -g @anthropic-ai/claude-code"],
-                    "config_steps": [],
-                    "run_commands": ["claude"],
-                    "warnings": [],
-                }
-            ],
-            "needs_credential": True,
-            "is_paid": True,
-            "alternative_tools": ["cursor", "codex"],
-        })
+        mock_call_llm.return_value = json.dumps(
+            {
+                "theme": "Claude Code使用",
+                "summary": "介绍Claude Code安装和使用",
+                "tools": [
+                    {
+                        "name": "claude",
+                        "purpose": "AI编程助手",
+                        "links": [],
+                        "install_commands": ["npm install -g @anthropic-ai/claude-code"],
+                        "config_steps": [],
+                        "run_commands": ["claude"],
+                        "warnings": [],
+                    }
+                ],
+                "needs_credential": True,
+                "is_paid": True,
+                "alternative_tools": ["cursor", "codex"],
+            }
+        )
 
         analyzer = AnalyzerV2(self.config)
         result = analyzer.analyze("介绍Claude Code", "B站")
@@ -288,8 +290,5 @@ class TestAnalyzerV2Multimodal:
             content = self.analyzer._create_multimodal_prompt(text, "B站", frames)
 
         # 计算图片数量（content 中 type=image_url 的数量）
-        image_count = sum(
-            1 for item in content
-            if item.get("type") == "image_url"
-        )
+        image_count = sum(1 for item in content if item.get("type") == "image_url")
         assert image_count <= 3
