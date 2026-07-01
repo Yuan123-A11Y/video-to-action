@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '../hooks/useAuth';
-import { Zap, Eye, EyeOff, AlertCircle, CircleCheck, Loader2 } from 'lucide-react';
+import { Zap, Eye, EyeOff, AlertCircle, CircleCheck, Loader2, User, Mail, KeyRound, ShieldCheck } from 'lucide-react';
 
 /**
  * 注册表单验证 Schema
@@ -28,6 +28,25 @@ const registerSchema = z.object({
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 /**
+ * 密码强度计算
+ */
+function getPasswordStrength(password: string): { level: number; label: string; color: string; percent: number } {
+  if (!password) return { level: 0, label: '', color: '', percent: 0 };
+
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 10) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+
+  if (score <= 2) return { level: 1, label: '弱', color: 'var(--color-error)', percent: 33 };
+  if (score <= 4) return { level: 2, label: '中', color: 'var(--color-warning)', percent: 66 };
+  return { level: 3, label: '强', color: 'var(--color-success)', percent: 100 };
+}
+
+/**
  * 注册页面组件 — 统一品牌设计语言
  */
 export default function RegisterPage() {
@@ -36,13 +55,15 @@ export default function RegisterPage() {
 
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [registerSuccess, setRegisterSuccess] = useState<boolean>(false);
+  const submitBtnRef = useRef<HTMLButtonElement>(null);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid, isSubmitting },
+    formState: { errors, isSubmitting, touchedFields },
     watch,
     setFocus,
+    trigger,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     mode: 'onTouched',
@@ -56,45 +77,20 @@ export default function RegisterPage() {
   });
 
   const password = watch('password');
-
-  // 自动聚焦第一个输入框
-  useEffect(() => {
-    setTimeout(() => setFocus('username'), 100);
-  }, [setFocus]);
-
-  // 清除错误当组件卸载时
-  useEffect(() => {
-    return () => {
-      clearError();
-    };
-  }, [clearError]);
-
-  /**
-   * 检查密码强度
-   */
-  const getPasswordStrength = (password: string): { strength: number; label: string; color: string; bgColor: string } => {
-    if (!password) return { strength: 0, label: '', color: '', bgColor: '' };
-
-    let score = 0;
-    if (password.length >= 6) score++;
-    if (password.length >= 10) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-
-    if (score <= 2) return { strength: 1, label: '弱', color: 'bg-red-500', bgColor: 'bg-red-50' };
-    if (score <= 4) return { strength: 2, label: '中', color: 'bg-yellow-500', bgColor: 'bg-yellow-50' };
-    return { strength: 3, label: '强', color: 'bg-[var(--color-success)]', bgColor: 'bg-[var(--color-success-soft)]' };
-  };
-
   const passwordStrength = getPasswordStrength(password);
 
-  /**
-   * 处理表单提交
-   */
+  // 自动聚焦
+  useEffect(() => {
+    setFocus('username');
+  }, [setFocus]);
+
+  // 清除错误
+  useEffect(() => {
+    return () => { clearError(); };
+  }, [clearError]);
+
   const onSubmit = async (data: RegisterFormData) => {
-    if (isSubmitting) return; // 防止重复提交
+    if (isSubmitting) return;
 
     clearError();
     setRegisterSuccess(false);
@@ -102,30 +98,49 @@ export default function RegisterPage() {
     try {
       await registerUser(data.username, data.email, data.password);
       setRegisterSuccess(true);
-
-      // 注册成功，延迟跳转到登录页
-      setTimeout(() => {
-        navigate('/login', {
-          state: { message: '注册成功！请登录您的账户。' },
-        });
-      }, 1500);
-    } catch (error) {
-      console.error('Registration failed:', error);
+      setTimeout(() => navigate('/login', {
+        state: { message: '注册成功！请登录您的账户。' },
+      }), 1500);
+    } catch {
+      submitBtnRef.current?.classList.add('animate-shake');
+      setTimeout(() => submitBtnRef.current?.classList.remove('animate-shake'), 500);
     }
   };
+
+  const fieldBaseClass =
+    'w-full pl-10 pr-4 py-2.5 rounded-[var(--radius-sm)] border text-sm transition-all duration-200 outline-none ' +
+    'placeholder-[var(--color-text-tertiary)] text-[var(--color-text-primary)]';
+
+  const fieldNormalClass =
+    'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] ' +
+    'focus:border-[var(--color-primary-border)] focus:shadow-[var(--shadow-focus)] ' +
+    'hover:border-[var(--color-border-strong)]';
+
+  const fieldErrorClass =
+    'border-[var(--color-error)] focus:border-[var(--color-error)] ' +
+    'focus:shadow-[0_0_0_3px_rgba(220,38,38,0.15)] bg-[var(--color-error-soft)]/30';
+
+  const iconBaseClass =
+    'absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-200';
+
+  const inputIconColor = (fieldName: 'username' | 'email' | 'password' | 'confirm_password') =>
+    errors[fieldName]
+      ? 'text-[var(--color-error)]'
+      : touchedFields[fieldName]
+        ? 'text-[var(--color-primary)]'
+        : 'text-[var(--color-text-tertiary)]';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-app)] py-12 px-4 sm:px-6 lg:px-8">
       {/* 背景装饰 */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[var(--color-primary)]/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[var(--color-primary)]/3 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-[var(--color-primary)]/5 rounded-full blur-3xl animate-pulse-slow" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-[var(--color-primary)]/3 rounded-full blur-3xl animate-pulse-slower" />
       </div>
 
-      <div className="max-w-md w-full space-y-8 relative">
+      <div className="max-w-md w-full space-y-8 relative animate-fade-in">
         {/* 标题区 */}
-        <div className="text-center">
-          {/* Logo */}
+        <div className="text-center animate-slide-down">
           <div className="mx-auto h-14 w-14 flex items-center justify-center rounded-2xl bg-[var(--color-primary-soft)] shadow-[var(--shadow-md)] mb-5">
             <Zap size={28} className="text-[var(--color-primary)]" />
           </div>
@@ -137,9 +152,9 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* 成功提示 */}
+        {/* 注册成功提示 */}
         {registerSuccess && (
-          <div className="rounded-xl bg-[var(--color-success-soft)] border border-[var(--color-success)]/20 p-4 animate-fade-in">
+          <div className="rounded-xl bg-[var(--color-success-soft)] border border-[var(--color-success)]/20 p-4 animate-slide-down">
             <div className="flex items-center gap-3">
               <CircleCheck size={20} className="text-[var(--color-success)] shrink-0" />
               <p className="text-sm font-medium text-[var(--color-success)]">
@@ -150,142 +165,127 @@ export default function RegisterPage() {
         )}
 
         {/* 注册表单卡片 */}
-        <div className="bg-[var(--color-bg-surface)] rounded-[var(--radius-xl)] border border-[var(--color-border-subtle)] shadow-[var(--shadow-lg)] p-8">
-          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
-            {/* 用户名输入框 */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                用户名
-              </label>
-              <input
-                id="username"
-                type="text"
-                autoComplete="username"
-                {...register('username')}
-                className={`w-full px-4 py-2.5 rounded-[var(--radius-sm)] border text-sm transition-all outline-none ${
-                  errors.username
-                    ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[0_0_0_3px_rgba(220,38,38,0.15)] bg-[var(--color-error-soft)]/30'
-                    : 'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] focus:border-[var(--color-primary-border)] focus:shadow-[var(--shadow-focus)] hover:border-[var(--color-border-strong)]'
-                } placeholder-[var(--color-text-tertiary)] text-[var(--color-text-primary)]`}
-                placeholder="3-50字符，仅字母数字下划线"
-                disabled={isLoading}
-              />
-              {errors.username && (
-                <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
-                  <AlertCircle size={12} />
-                  {errors.username.message}
-                </p>
-              )}
-            </div>
-
-            {/* 邮箱输入框 */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                邮箱地址
-              </label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                {...register('email')}
-                className={`w-full px-4 py-2.5 rounded-[var(--radius-sm)] border text-sm transition-all outline-none ${
-                  errors.email
-                    ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[0_0_0_3px_rgba(220,38,38,0.15)] bg-[var(--color-error-soft)]/30'
-                    : 'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] focus:border-[var(--color-primary-border)] focus:shadow-[var(--shadow-focus)] hover:border-[var(--color-border-strong)]'
-                } placeholder-[var(--color-text-tertiary)] text-[var(--color-text-primary)]`}
-                placeholder="you@example.com"
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
-                  <AlertCircle size={12} />
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* 密码输入框 */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                密码
-              </label>
+        <div className="bg-[var(--color-bg-surface)] rounded-[var(--radius-xl)] border border-[var(--color-border-subtle)] shadow-[var(--shadow-lg)] p-8 animate-scale-in">
+          <form className="space-y-5" onSubmit={handleSubmit(onSubmit)} noValidate>
+            {/* 用户名 */}
+            <div className="animate-stagger-1">
+              <label htmlFor="username" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">用户名</label>
               <div className="relative">
+                <User size={16} className={`${iconBaseClass} ${inputIconColor('username')}`} />
+                <input
+                  id="username" type="text" autoComplete="username"
+                  {...register('username')}
+                  className={`${fieldBaseClass} ${errors.username ? fieldErrorClass : fieldNormalClass}`}
+                  placeholder="3-50字符，仅字母数字下划线"
+                  disabled={isLoading}
+                />
+                {errors.username && (
+                  <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
+                    <AlertCircle size={12} /> {errors.username.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 邮箱 */}
+            <div className="animate-stagger-2">
+              <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">邮箱地址</label>
+              <div className="relative">
+                <Mail size={16} className={`${iconBaseClass} ${inputIconColor('email')}`} />
+                <input
+                  id="email" type="email" autoComplete="email"
+                  {...register('email')}
+                  className={`${fieldBaseClass} ${errors.email ? fieldErrorClass : fieldNormalClass}`}
+                  placeholder="you@example.com"
+                  disabled={isLoading}
+                />
+                {errors.email && (
+                  <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
+                    <AlertCircle size={12} /> {errors.email.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 密码 */}
+            <div className="animate-stagger-3">
+              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">密码</label>
+              <div className="relative">
+                <KeyRound size={16} className={`${iconBaseClass} ${inputIconColor('password')}`} />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   {...register('password')}
-                  className={`w-full px-4 py-2.5 rounded-[var(--radius-sm)] border text-sm transition-all outline-none pr-12 ${
-                    errors.password
-                      ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[0_0_0_3px_rgba(220,38,38,0.15)] bg-[var(--color-error-soft)]/30'
-                      : 'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] focus:border-[var(--color-primary-border)] focus:shadow-[var(--shadow-focus)] hover:border-[var(--color-border-strong)]'
-                  } placeholder-[var(--color-text-tertiary)] text-[var(--color-text-primary)]`}
+                  className={`${fieldBaseClass} pr-12 ${errors.password ? fieldErrorClass : fieldNormalClass}`}
                   placeholder="至少6个字符，包含字母和数字"
                   disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors z-10"
+                  tabIndex={-1}
                   disabled={isLoading}
+                  aria-label={showPassword ? '隐藏密码' : '显示密码'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+                {errors.password && (
+                  <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
+                    <AlertCircle size={12} /> {errors.password.message}
+                  </p>
+                )}
               </div>
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
-                  <AlertCircle size={12} />
-                  {errors.password.message}
-                </p>
-              )}
 
               {/* 密码强度指示器 */}
               {password && (
-                <div className="mt-2.5 space-y-1.5">
+                <div className="mt-2.5 animate-fade-in">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-[var(--color-bg-overlay)] rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
-                        style={{ width: `${(passwordStrength.strength / 3) * 100}%` }}
+                        className="h-full rounded-full transition-all duration-500 ease-out"
+                        style={{
+                          width: `${passwordStrength.percent}%`,
+                          backgroundColor: passwordStrength.color,
+                        }}
                       />
                     </div>
-                    <span className={`text-xs font-medium ${passwordStrength.label === '强' ? 'text-[var(--color-success)]' : passwordStrength.label === '中' ? 'text-[var(--color-warning)]' : 'text-[var(--color-error)]'}`}>
+                    <span
+                      className="text-xs font-medium transition-colors duration-300"
+                      style={{ color: passwordStrength.color }}
+                    >
                       {passwordStrength.label}
                     </span>
+                    {passwordStrength.level >= 3 && <ShieldCheck size={14} className="text-[var(--color-success)]" />}
                   </div>
-                  <p className="text-xs text-[var(--color-text-tertiary)]">
-                    规则：6+字符，含字母和数字
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                    规则：6+字符，含字母和数字{passwordStrength.level >= 3 ? ' ✅ 强度达标' : ''}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* 确认密码输入框 */}
-            <div>
-              <label htmlFor="confirm_password" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                确认密码
-              </label>
+            {/* 确认密码 */}
+            <div className="animate-stagger-4">
+              <label htmlFor="confirm_password" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">确认密码</label>
               <div className="relative">
+                <ShieldCheck size={16} className={`${iconBaseClass} ${inputIconColor('confirm_password')}`} />
                 <input
                   id="confirm_password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   {...register('confirm_password')}
-                  className={`w-full px-4 py-2.5 rounded-[var(--radius-sm)] border text-sm transition-all outline-none ${
-                    errors.confirm_password
-                      ? 'border-[var(--color-error)] focus:border-[var(--color-error)] focus:shadow-[0_0_0_3px_rgba(220,38,38,0.15)] bg-[var(--color-error-soft)]/30'
-                      : 'border-[var(--color-border-default)] bg-[var(--color-bg-surface)] focus:border-[var(--color-primary-border)] focus:shadow-[var(--shadow-focus)] hover:border-[var(--color-border-strong)]'
-                  } placeholder-[var(--color-text-tertiary)] text-[var(--color-text-primary)]`}
+                  className={`${fieldBaseClass} ${errors.confirm_password ? fieldErrorClass : fieldNormalClass}`}
                   placeholder="再次输入密码"
                   disabled={isLoading}
                 />
+                {errors.confirm_password && (
+                  <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
+                    <AlertCircle size={12} /> {errors.confirm_password.message}
+                  </p>
+                )}
               </div>
-              {errors.confirm_password && (
-                <p className="mt-1.5 text-xs text-[var(--color-error)] flex items-center gap-1 animate-fade-in">
-                  <AlertCircle size={12} />
-                  {errors.confirm_password.message}
-                </p>
-              )}
             </div>
 
             {/* 错误提示 */}
@@ -299,28 +299,32 @@ export default function RegisterPage() {
             )}
 
             {/* 提交按钮 */}
-            <button
-              type="submit"
-              disabled={isLoading || isSubmitting}
-              className={`w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-[var(--radius-sm)] text-sm font-medium text-white transition-all ${
-                isLoading || isSubmitting
-                  ? 'bg-[var(--color-primary-disabled)] cursor-not-allowed'
-                  : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]'
-              }`}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  注册中...
-                </>
-              ) : (
-                '注册账户'
-              )}
-            </button>
+            <div className="animate-stagger-5">
+              <button
+                ref={submitBtnRef}
+                type="submit"
+                disabled={isLoading || isSubmitting}
+                className={`w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-[var(--radius-sm)] text-sm font-medium text-white transition-all duration-200 relative overflow-hidden ${
+                  isLoading || isSubmitting
+                    ? 'bg-[var(--color-primary-disabled)] cursor-not-allowed'
+                    : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] active:scale-[0.98]'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>注册中...</span>
+                    <span className="absolute bottom-0 left-0 h-0.5 bg-white/30 animate-progress" />
+                  </>
+                ) : (
+                  '注册账户'
+                )}
+              </button>
+            </div>
           </form>
 
           {/* 登录链接 */}
-          <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)]">
+          <p className="mt-6 text-center text-sm text-[var(--color-text-secondary)] animate-stagger-5">
             已有账户？{' '}
             <Link
               to="/login"
@@ -331,6 +335,54 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
+
+      {/* CSS 动画 */}
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        @keyframes pulse-slower {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.08); }
+        }
+        @keyframes slide-down {
+          from { opacity: 0; transform: translateY(-12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes progress {
+          0% { width: 0; }
+          50% { width: 60%; }
+          100% { width: 100%; }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-4px); }
+          40% { transform: translateX(4px); }
+          60% { transform: translateX(-3px); }
+          80% { transform: translateX(3px); }
+        }
+        .animate-pulse-slow { animation: pulse-slow 6s ease-in-out infinite; }
+        .animate-pulse-slower { animation: pulse-slower 8s ease-in-out infinite; }
+        .animate-slide-down { animation: slide-down 0.4s ease-out both; }
+        .animate-scale-in { animation: scale-in 0.35s ease-out both; }
+        .animate-progress { animation: progress 2s ease-in-out infinite; }
+        .animate-fade-in { animation: fade-in 0.25s ease-out both; }
+        .animate-shake { animation: shake 0.4s ease-out both; }
+        .animate-stagger-1 { animation: slide-down 0.35s ease-out 0.05s both; }
+        .animate-stagger-2 { animation: slide-down 0.35s ease-out 0.1s both; }
+        .animate-stagger-3 { animation: slide-down 0.35s ease-out 0.15s both; }
+        .animate-stagger-4 { animation: slide-down 0.35s ease-out 0.2s both; }
+        .animate-stagger-5 { animation: slide-down 0.35s ease-out 0.25s both; }
+      `}</style>
     </div>
   );
 }
