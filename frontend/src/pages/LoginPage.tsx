@@ -34,10 +34,12 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
+    trigger,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    mode: 'onBlur',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       username: '',
       password: '',
@@ -56,6 +58,8 @@ export default function LoginPage() {
    * 处理表单提交
    */
   const onSubmit = async (data: LoginFormData) => {
+    if (isSubmitting) return; // 防止重复提交
+
     clearError();
     setLoginSuccess(false);
 
@@ -70,6 +74,7 @@ export default function LoginPage() {
       }, 500);
     } catch (error) {
       console.error('Login failed:', error);
+      trigger(); // 触发字段验证以显示错误状态
     }
   };
 
@@ -208,9 +213,9 @@ export default function LoginPage() {
             {/* 提交按钮 */}
             <button
               type="submit"
-              disabled={isLoading || !isValid}
+              disabled={isLoading || isSubmitting}
               className={`w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-[var(--radius-sm)] text-sm font-medium text-white transition-all ${
-                isLoading || !isValid
+                isLoading || isSubmitting
                   ? 'bg-[var(--color-primary-disabled)] cursor-not-allowed'
                   : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]'
               }`}

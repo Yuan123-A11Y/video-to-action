@@ -168,6 +168,7 @@ export async function login(request: LoginRequest): Promise<ApiResponse<TokenRes
  * 用户注册
  */
 export async function register(request: RegisterRequest): Promise<ApiResponse<TokenResponse & { user: User }>> {
+  // 只发送后端需要的字段，排除 confirm_password
   const { data } = await api.post<ApiResponse<TokenResponse & { user: User }>>('/auth/register', {
     username: request.username,
     email: request.email,

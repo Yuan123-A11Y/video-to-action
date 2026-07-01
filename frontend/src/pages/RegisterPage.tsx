@@ -40,11 +40,13 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isSubmitting },
     watch,
+    setFocus,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    mode: 'onBlur',
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       username: '',
       email: '',
@@ -54,6 +56,11 @@ export default function RegisterPage() {
   });
 
   const password = watch('password');
+
+  // 自动聚焦第一个输入框
+  useEffect(() => {
+    setTimeout(() => setFocus('username'), 100);
+  }, [setFocus]);
 
   // 清除错误当组件卸载时
   useEffect(() => {
@@ -87,6 +94,8 @@ export default function RegisterPage() {
    * 处理表单提交
    */
   const onSubmit = async (data: RegisterFormData) => {
+    if (isSubmitting) return; // 防止重复提交
+
     clearError();
     setRegisterSuccess(false);
 
@@ -292,9 +301,9 @@ export default function RegisterPage() {
             {/* 提交按钮 */}
             <button
               type="submit"
-              disabled={isLoading || !isValid}
+              disabled={isLoading || isSubmitting}
               className={`w-full flex justify-center items-center gap-2 py-2.5 px-4 rounded-[var(--radius-sm)] text-sm font-medium text-white transition-all ${
-                isLoading || !isValid
+                isLoading || isSubmitting
                   ? 'bg-[var(--color-primary-disabled)] cursor-not-allowed'
                   : 'bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover)] active:bg-[var(--color-primary-active)] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]'
               }`}
