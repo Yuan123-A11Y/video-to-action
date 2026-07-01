@@ -1,4 +1,8 @@
-"""视频内容分析模块 V2 - 优化版，支持多模态分析和本地LLM。"""
+"""视频内容分析模块 V2 - 优化版，支持多模态分析和本地LLM。
+
+v2.1 新增：联网增强（WebEnricher），在 LLM 分析后自动联网检索
+工具的最新版本、安装命令和权威文档，验证视频内容的时效性。
+"""
 
 import asyncio
 import base64
@@ -12,6 +16,7 @@ from typing import Optional
 
 from video_to_action.exceptions import AnalysisError
 from video_to_action.json_parser import parse_json_response
+from video_to_action.web_enricher import WebEnricher, EnrichedTool
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +32,18 @@ class AnalyzerV2:
     _video_context = {}  # 存储视频上下文（URL、路径等）
 
     def __init__(self, config: dict):
-        """初始化分析器，加载LLM配置。"""
+        """初始化分析器，加载LLM配置和联网增强器。"""
         self.config = config
         self.llm_config = config.get("llm", {})
         self.vision_enabled = self.llm_config.get("vision_enabled", False)
         self._load_cache()
         self._video_url = None  # 当前分析的视频 URL
         self._video_path = None  # 当前分析的视频路径
+
+        # 联网增强配置
+        web_config = config.get("web_enrichment", {})
+        self.web_enrichment_enabled = web_config.get("enabled", True)  # 默认启用
+        self.web_enricher = WebEnricher(web_config) if self.web_enrichment_enabled else None
 
     def _load_cache(self):
         """从文件加载缓存。"""
@@ -495,14 +505,55 @@ class AnalyzerV2:
         try:
             response = self._call_llm(messages)
             result = parse_json_response(response)
-            # 添加分析元数据
+
+            # ---- 联网增强：验证工具信息的时效性并补充权威来源 ----
+            enriched_info = None
+            tools_to_enrich = result.get("tools", [])
+            if self.web_enricher and tools_to_enrich:
+                try:
+                    logger.info("开始联网增强分析（共 %d 个工具）", len(tools_to_enrich))
+                    enrichment_result = asyncio.run(self.web_enricher.enrich(tools_to_enrich, platform))
+                    enriched_info = {
+                        "enriched_at": enrichment_result.enriched_at,
+                        "total_sources_consulted": enrichment_result.total_sources_consulted,
+                        "discrepancies_found": enrichment_result.discrepancies_found,
+                        "tool_details": [
+                            {
+                                "name": t.name,
+                                "latest_version": t.latest_version,
+                                "latest_release_date": t.latest_release_date,
+                                "github_url": t.github_url,
+                                "github_stars": t.github_stars,
+                                "official_docs_url": t.official_docs_url,
+                                "package_registry_url": t.package_registry_url,
+                                "source_references": t.source_references,
+                                "warnings": t.warnings,
+                                "video_commands_match_latest": t.video_commands_match,
+                                "search_time": t.search_time,
+                            }
+                            for t in enrichment_result.tools
+                        ],
+                    }
+                    logger.info(
+                        "联网增强完成：来源 %d 个，发现差异 %d 处",
+                        enrichment_result.total_sources_consulted,
+                        enrichment_result.discrepancies_found,
+                    )
+                except Exception as enrich_err:
+                    logger.warning("联网增强失败（不影响主结果）: %s", enrich_err)
+
+            # 添加分析元数据和联网增强信息
             result["_metadata"] = {
                 "platform": platform,
                 "vision_enabled": self.vision_enabled and frames is not None,
                 "text_length": len(text),
                 "frame_count": len(frames) if frames else 0,
                 "has_metadata": metadata is not None,
+                "web_enrichment": enriched_info is not None,
             }
+            if enriched_info:
+                result["_web_enrichment"] = enriched_info
+
             # 保存到缓存
             if self._cache_enabled:
                 cache_key = self._get_cache_key(text, platform)
@@ -564,13 +615,53 @@ class AnalyzerV2:
                 response = await self._call_openai_compatible_async(messages)
 
             result = parse_json_response(response)
+
+            # ---- 联网增强（异步版本） ----
+            enriched_info = None
+            tools_to_enrich = result.get("tools", [])
+            if self.web_enricher and tools_to_enrich:
+                try:
+                    logger.info("开始联网增强分析（异步）（共 %d 个工具）", len(tools_to_enrich))
+                    enrichment_result = await self.web_enricher.enrich(tools_to_enrich, platform)
+                    enriched_info = {
+                        "enriched_at": enrichment_result.enriched_at,
+                        "total_sources_consulted": enrichment_result.total_sources_consulted,
+                        "discrepancies_found": enrichment_result.discrepancies_found,
+                        "tool_details": [
+                            {
+                                "name": t.name,
+                                "latest_version": t.latest_version,
+                                "latest_release_date": t.latest_release_date,
+                                "github_url": t.github_url,
+                                "github_stars": t.github_stars,
+                                "official_docs_url": t.official_docs_url,
+                                "package_registry_url": t.package_registry_url,
+                                "source_references": t.source_references,
+                                "warnings": t.warnings,
+                                "video_commands_match_latest": t.video_commands_match,
+                                "search_time": t.search_time,
+                            }
+                            for t in enrichment_result.tools
+                        ],
+                    }
+                    logger.info(
+                        "异步联网增强完成：来源 %d 个，发现差异 %d 处",
+                        enrichment_result.total_sources_consulted,
+                        enrichment_result.discrepancies_found,
+                    )
+                except Exception as enrich_err:
+                    logger.warning("联网增强失败（不影响主结果）: %s", enrich_err)
+
             result["_metadata"] = {
                 "platform": platform,
                 "vision_enabled": self.vision_enabled and frames is not None,
                 "text_length": len(text),
                 "frame_count": len(frames) if frames else 0,
                 "has_metadata": metadata is not None,
+                "web_enrichment": enriched_info is not None,
             }
+            if enriched_info:
+                result["_web_enrichment"] = enriched_info
             # 保存到缓存
             if self._cache_enabled:
                 cache_key = self._get_cache_key(text, platform)
